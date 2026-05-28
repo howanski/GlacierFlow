@@ -1,0 +1,136 @@
+#!/bin/bash
+#####
+GF_DAEMON_MODE_FREQUENCY=10
+GF_INFERENCE_COMPOSE_FILE_SOURCE='../data/shared/inference_config.yml'
+GF_INFERENCE_COMPOSE_FILE_TARGET='../docker/llama_cpp/compose.override.yml'
+GF_INFERENCE_SERVICE_UP_HASH='../data/shared/inference_up_hash.txt'
+GF_INFERENCE_SERVICE_UP_STATUS='../data/shared/inference_status.txt'
+GF_INFERENCE_SERVICE_UP_TIMESTAMP='../data/shared/inference_up_timestamp.txt'
+GF_INFERENCE_SERVICE="glacierflow-llamacpp"
+GF_INFERENCE_URL="http://localhost:8080"
+GF_STACK_NAME="glacierflow"
+#####
+
+if [ -z "$1" ]; then
+	isDaemon=0
+else
+	isDaemon=1
+fi
+
+fail_preflight_on_missing_binary() {
+	if [ "$(has_binary $1)" -ne "1" ]; then
+		echo "Preflight check failed, missing binary from the system: $1"
+		exit 127
+	fi
+}
+
+has_binary() {
+	if [ -f "$(which $1)" ]; then
+		echo "1"
+	else
+		echo "0"
+	fi
+}
+
+log_inference_status() {
+	local currentStatus="UNKNOWN"
+	if [ -f "$GF_INFERENCE_SERVICE_UP_STATUS" ]; then
+		currentStatus=$(cat "$GF_INFERENCE_SERVICE_UP_STATUS")
+	fi
+
+	if [[ "$currentStatus" != "$1" ]]; then
+		echo "$1" >"$GF_INFERENCE_SERVICE_UP_STATUS"
+		echo "Inference status change to: $1"
+	fi
+}
+
+run_inference_server() {
+	if [ ! -f "$GF_INFERENCE_COMPOSE_FILE_SOURCE" ]; then
+		echo "Missing desired inference config"
+		log_inference_status "NOT CONFIGURED"
+		return
+	fi
+	local ymlSourceHash=$(md5sum $GF_INFERENCE_COMPOSE_FILE_SOURCE | xargs | cut -d " " -f 1)
+	local ymlTargetHash='GlacierFlow'
+	if [ -f "$GF_INFERENCE_COMPOSE_FILE_TARGET" ]; then
+		ymlTargetHash=$(md5sum $GF_INFERENCE_COMPOSE_FILE_TARGET | xargs | cut -d " " -f 1)
+	fi
+
+	local forceInferenceServerRun=0
+
+	if [[ "$ymlSourceHash" == "$ymlTargetHash" ]]; then
+		# chosen setup OK, make sure it IS running
+		if [ "$(docker ps | grep "$GF_INFERENCE_SERVICE" | wc -l)" -lt 1 ]; then
+			forceInferenceServerRun=1
+		else
+			# INFERENCE SERVER UP - is it responding?"
+			local responseCode=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 --max-time 5 "$GF_INFERENCE_URL")
+			local curlExitStatus=$?
+			if [ $curlExitStatus -eq 0 ]; then
+				if [ "$responseCode" == "503" ]; then
+					log_inference_status "LOADING"
+				elif [ "$responseCode" == "200" ]; then
+					log_inference_status "RUNNING"
+				fi
+			else
+				log_inference_status "UMM..."
+			fi
+		fi
+	else
+		# HASH CHANGED, OVERWRITE CONFIG
+		cat "$GF_INFERENCE_COMPOSE_FILE_SOURCE" >"$GF_INFERENCE_COMPOSE_FILE_TARGET"
+		forceInferenceServerRun=1
+	fi
+
+	if [ "$forceInferenceServerRun" -eq 1 ]; then
+		local localDir=$(pwd)
+		cd "../docker/llama_cpp/"
+		docker compose down
+		sleep 1
+		if [ -f "../../.env" ]; then
+			export $(xargs <"../../.env")
+		fi
+		docker compose -p $GF_STACK_NAME up -d
+		sleep 1
+		cd "$localDir"
+		date +%s >"$GF_INFERENCE_SERVICE_UP_TIMESTAMP"
+		echo "$ymlSourceHash" >"$GF_INFERENCE_SERVICE_UP_HASH"
+		log_inference_status "LAUNCHING"
+	fi
+}
+
+run_main_service() {
+	echo "Starting GlacierFlow background service"
+	if [[ $isDaemon -eq 0 ]]; then
+		echo "[Will execute once and exit]"
+	fi
+	run_preflight_checks
+	while true; do
+		run_inference_server
+
+		echo "[HEALTH TICK] $(date)"
+		# If not in daemon mode, break immediately after the first iteration
+		if [[ $isDaemon -eq 0 ]]; then
+			break
+		fi
+		sleep $GF_DAEMON_MODE_FREQUENCY
+	done
+
+	echo "GlacierFlow background service stopped"
+}
+
+run_preflight_checks() {
+	echo "Preflight check..."
+	fail_preflight_on_missing_binary cat
+	fail_preflight_on_missing_binary curl
+	fail_preflight_on_missing_binary cut
+	fail_preflight_on_missing_binary date
+	fail_preflight_on_missing_binary docker
+	fail_preflight_on_missing_binary md5sum
+	fail_preflight_on_missing_binary pwd
+	fail_preflight_on_missing_binary xargs
+	echo "Preflight check DONE"
+}
+
+clear
+run_main_service
