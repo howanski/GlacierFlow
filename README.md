@@ -14,6 +14,15 @@ At the time of writing this README, I am trying to pull together all the scripts
 Spit and tape are not subject to a license, third-party software probably is - I will fill in this information as fast as I want to.
 
 ---
+READY:
+ - llama.cpp with profile switching
+
+TODO:
+- coder
+- agent
+- webui
+
+---
 Remotes:
 - [codeberg](https://codeberg.org/howanski/GlacierFlow)
 - [github](https://github.com/howanski/GlacierFlow)
