@@ -3,6 +3,7 @@
 GF_DAEMON_MODE_FREQUENCY=10
 GF_INFERENCE_COMPOSE_FILE_SOURCE='../data/shared/inference_config.yml'
 GF_INFERENCE_COMPOSE_FILE_TARGET='../docker/llama_cpp/compose.override.yml'
+GF_INFERENCE_SERVICE_LOCK='../data/shared/INFERENCE_LOCK'
 GF_INFERENCE_SERVICE_UP_HASH='../data/shared/inference_up_hash.txt'
 GF_INFERENCE_SERVICE_UP_STATUS='../data/shared/inference_status.txt'
 GF_INFERENCE_SERVICE_UP_TIMESTAMP='../data/shared/inference_up_timestamp.txt'
@@ -45,6 +46,15 @@ log_inference_status() {
 }
 
 run_inference_server() {
+	local localDir=$(pwd)
+	if [ -f "$GF_INFERENCE_SERVICE_LOCK" ]; then
+		cd "../docker/llama_cpp/"
+		docker compose down
+		echo "Inference server locked"
+		cd $localDir
+		log_inference_status "LOCKED"
+		return
+	fi
 	if [ ! -f "$GF_INFERENCE_COMPOSE_FILE_SOURCE" ]; then
 		echo "Missing desired inference config"
 		log_inference_status "NOT CONFIGURED"
@@ -71,6 +81,8 @@ run_inference_server() {
 					log_inference_status "LOADING"
 				elif [ "$responseCode" == "200" ]; then
 					log_inference_status "RUNNING"
+				else
+					log_inference_status "UMM..."
 				fi
 			else
 				log_inference_status "UMM..."
@@ -83,13 +95,14 @@ run_inference_server() {
 	fi
 
 	if [ "$forceInferenceServerRun" -eq 1 ]; then
-		local localDir=$(pwd)
+		log_inference_status "STOPPED"
 		cd "../docker/llama_cpp/"
 		docker compose down
-		sleep 1
+		sleep 2
 		if [ -f "../../.env" ]; then
 			export $(xargs <"../../.env")
 		fi
+		docker compose pull
 		docker compose -p $GF_STACK_NAME up -d
 		sleep 1
 		cd "$localDir"
@@ -126,6 +139,7 @@ run_preflight_checks() {
 	fail_preflight_on_missing_binary cut
 	fail_preflight_on_missing_binary date
 	fail_preflight_on_missing_binary docker
+	fail_preflight_on_missing_binary grep
 	fail_preflight_on_missing_binary md5sum
 	fail_preflight_on_missing_binary pwd
 	fail_preflight_on_missing_binary xargs

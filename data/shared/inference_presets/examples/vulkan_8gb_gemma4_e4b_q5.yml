@@ -1,0 +1,26 @@
+# HF: https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF
+# Example config for AMD RX 6600 + Ryzen 5 5600
+#
+services:
+  glacierflow-llamacpp:
+    devices:
+      - "/dev/dri/renderD128:/dev/dri/renderD128"
+    command: >
+      --cpu-moe
+      --ctx-size 128000
+      --flash-attn on
+      --host 0.0.0.0
+      --min-p 0.05
+      --model /models/unsloth/gemma-4-E4B-it-GGUF/gemma-4-E4B-it-Q5_K_M.gguf
+      --n_gpu_layers 99
+      --no-mmap
+      --no-mmproj
+      --parallel 1
+      --port 8080
+      --presence-penalty 0.0
+      --repeat-penalty 1.1
+      --seed 42
+      --temp 1.0
+      --threads 4
+      --top-k 64
+      --top-p 0.95

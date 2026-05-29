@@ -11,8 +11,6 @@ services:
     command: >
       --TODO RENAME PRESET FILE TO 'compose.override.yml'
     restart: no
-    devices:
-      - "/dev/dri/renderD128:/dev/dri/renderD128"
     deploy:
       resources:
         limits:

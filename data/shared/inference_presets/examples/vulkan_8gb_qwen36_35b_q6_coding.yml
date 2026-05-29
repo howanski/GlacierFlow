@@ -1,0 +1,35 @@
+# HF: https://huggingface.co/unsloth/Qwen3.6-35B-A3B-MTP-GGUF
+# Example config for AMD RX 6600 + Ryzen 5 5600
+#
+services:
+  glacierflow-llamacpp:
+    devices:
+      - "/dev/dri/renderD128:/dev/dri/renderD128"
+    command: >
+      --batch-size 1024
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --chat-template-kwargs '{"enable_thinking":true}'
+      --cpu-moe
+      --ctx-size 150000
+      --flash-attn on
+      --host 0.0.0.0
+      --min-p 0.0
+      --model /models/unsloth/Qwen3.6-35B-A3B-MTP-GGUF/Qwen3.6-35B-A3B-UD-Q6_K.gguf
+      --n_gpu_layers 99
+      --no-mmap
+      --no-mmproj
+      --parallel 1
+      --port 8080
+      --presence-penalty 0.0
+      --repeat-penalty 1.0
+      --seed 42
+      --spec-draft-cpu-moe
+      --spec-draft-n-max 2
+      --spec-draft-ngl all
+      --spec-type draft-mtp
+      --temp 0.6
+      --threads 4
+      --top-k 20
+      --top-p 0.95
+      --ubatch-size 1024
