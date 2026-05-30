@@ -49,7 +49,7 @@ run_inference_server() {
 	local localDir=$(pwd)
 	if [ -f "$GF_INFERENCE_SERVICE_LOCK" ]; then
 		cd "../docker/llama_cpp/"
-		docker compose down
+		docker compose -p $GF_STACK_NAME down
 		echo "Inference server locked"
 		cd $localDir
 		log_inference_status "LOCKED"

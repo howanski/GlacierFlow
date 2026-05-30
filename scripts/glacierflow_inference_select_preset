@@ -1,5 +1,6 @@
 #!/bin/bash
 #####
+GF_LOAD_TIMEOUT=300
 GF_INFERENCE_COMPOSE_FILE_SOURCE='../data/shared/inference_config.yml'
 GF_INFERENCE_COMPOSE_FILE_TARGET='../docker/llama_cpp/compose.override.yml'
 GF_INFERENCE_PRESET_NAME='../data/shared/inference_preset_name.txt'
@@ -78,12 +79,18 @@ load_preset_file() {
 		fi
 
 		echo "Waiting for daemon to start loading preset..."
+		local loadingStart=$(date +%s)
 		while [[ $currentStatus != 'LOADING' ]]; do
+			actualLoadingTime=$(($(date +%s) - $loadingStart))
+			if [ $actualLoadingTime -gt $GF_LOAD_TIMEOUT ]; then
+				# Probably loaded in blink of an eye
+				exit 0
+			fi
 			sleep 1
 			currentStatus=$(cat $GF_INFERENCE_SERVICE_UP_STATUS)
 		done
 		echo "Waiting for daemon to finish loading preset..."
-		local loadingStart=$(date +%s)
+		loadingStart=$(date +%s)
 		local loadingTimeEstimate=$(get_preset_loading_time $checkSum)
 		while [[ $currentStatus == 'LOADING' ]]; do
 			actualLoadingTime=$(($(date +%s) - $loadingStart))
