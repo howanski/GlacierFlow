@@ -168,10 +168,10 @@ run_preflight_checks() {
 
 show_available_presets() {
 	echo "Use one of below names as script's first argument to load preset:"
-	local presetFiles=$(find $GF_INFERENCE_PRESETS_DIR_LOCAL | grep '.yml')
+	local presetFiles=$(find $GF_INFERENCE_PRESETS_DIR_LOCAL | grep '.yml' | sort -f)
 	if [ -z "$presetFiles" ]; then
 		echo "Listing example presets (no local presets found)"
-		presetFiles=$(find $GF_INFERENCE_PRESETS_DIR_EXAMPLE | grep '.yml')
+		presetFiles=$(find $GF_INFERENCE_PRESETS_DIR_EXAMPLE | grep '.yml' | sort -f)
 	fi
 
 	local currentPresetHash="XYZ!@#"
