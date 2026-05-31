@@ -1,14 +1,15 @@
 #!/bin/bash
 #####
-GF_LOAD_TIMEOUT=300
 GF_INFERENCE_COMPOSE_FILE_SOURCE='../data/shared/inference_config.yml'
 GF_INFERENCE_COMPOSE_FILE_TARGET='../docker/llama_cpp/compose.override.yml'
+GF_INFERENCE_PRESET_NAME_DESIRED='../data/shared/inference_preset_name_target.txt'
 GF_INFERENCE_PRESET_NAME='../data/shared/inference_preset_name.txt'
 GF_INFERENCE_PRESETS_DIR_EXAMPLE='../data/shared/inference_presets/examples/'
 GF_INFERENCE_PRESETS_DIR_LOCAL='../data/shared/inference_presets/local/'
 GF_INFERENCE_PRESETS_LOADING_TIMES='../data/shared/inference_loading_times.txt'
 GF_INFERENCE_SERVICE_UP_STATUS='../data/shared/inference_status.txt'
 GF_INFERENCE_URL="http://localhost:8080"
+GF_LOAD_TIMEOUT=300
 #####
 
 skipLoadingTimeCheck=0
@@ -56,6 +57,21 @@ has_binary() {
 	fi
 }
 
+is_preset_name_currently_running() {
+	local currentPresetName=""
+	if [ -f "$GF_INFERENCE_PRESET_NAME" ]; then
+		currentPresetName=$(cat "$GF_INFERENCE_PRESET_NAME")
+	fi
+	if [[ "$currentPresetName" == $1 ]]; then
+		local inferenceServerStatus=$(cat "$GF_INFERENCE_SERVICE_UP_STATUS")
+		if [[ "$inferenceServerStatus" == 'RUNNING' ]]; then
+			echo "1"
+			return 0
+		fi
+	fi
+	echo "0"
+}
+
 load_preset_file() {
 	if [ -f "$1" ]; then
 		local checkSum=$(md5sum "$GF_INFERENCE_COMPOSE_FILE_SOURCE" | xargs | cut -d " " -f 1)
@@ -66,7 +82,7 @@ load_preset_file() {
 		fi
 
 		cat "$1" >"$GF_INFERENCE_COMPOSE_FILE_SOURCE"
-		basename $1 | cut -d "." -f 1 >"$GF_INFERENCE_PRESET_NAME"
+		basename $1 | cut -d "." -f 1 >"$GF_INFERENCE_PRESET_NAME_DESIRED"
 		checkSum=$desiredCheckSum
 
 		if [ "$skipLoadingTimeCheck" -eq 1 ]; then
@@ -78,25 +94,20 @@ load_preset_file() {
 			exit 0
 		fi
 
-		echo "Waiting for daemon to start loading preset..."
 		local loadingStart=$(date +%s)
-		while [[ $currentStatus != 'LOADING' ]]; do
+		echo "Waiting for daemon to load preset..."
+		local presetToLoad=$(cat "$GF_INFERENCE_PRESET_NAME_DESIRED")
+		local loadingTimeEstimate=$(get_preset_loading_time $checkSum)
+		local isReady=$(is_preset_name_currently_running $presetToLoad)
+		while [[ $isReady == '0' ]]; do
 			actualLoadingTime=$(($(date +%s) - $loadingStart))
 			if [ $actualLoadingTime -gt $GF_LOAD_TIMEOUT ]; then
 				# Probably loaded in blink of an eye
 				exit 0
 			fi
+			echo -ne "[ $(add_minimal_padding $actualLoadingTime 3 left) / $loadingTimeEstimate ]\r"
 			sleep 1
-			currentStatus=$(cat $GF_INFERENCE_SERVICE_UP_STATUS)
-		done
-		echo "Waiting for daemon to finish loading preset..."
-		loadingStart=$(date +%s)
-		local loadingTimeEstimate=$(get_preset_loading_time $checkSum)
-		while [[ $currentStatus == 'LOADING' ]]; do
-			actualLoadingTime=$(($(date +%s) - $loadingStart))
-			echo "[ $(add_minimal_padding $actualLoadingTime 3 left) / $loadingTimeEstimate ]"
-			sleep 1
-			currentStatus=$(cat $GF_INFERENCE_SERVICE_UP_STATUS)
+			isReady=$(is_preset_name_currently_running $presetToLoad)
 		done
 		echo "Preset loaded!"
 

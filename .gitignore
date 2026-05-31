@@ -1,9 +1,10 @@
 .env
 data/shared/inference_config.yml
+data/shared/inference_loading_times.txt
+data/shared/inference_preset_name_target.txt
+data/shared/inference_preset_name.txt
 data/shared/inference_presets/local/*.yml
 data/shared/inference_status.txt
 data/shared/inference_up_hash.txt
 data/shared/inference_up_timestamp.txt
 docker/llama_cpp/compose.override.yml
-data/shared/inference_loading_times.txt
-data/shared/inference_preset_name.txt

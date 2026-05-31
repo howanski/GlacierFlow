@@ -3,6 +3,8 @@
 GF_DAEMON_MODE_FREQUENCY=10
 GF_INFERENCE_COMPOSE_FILE_SOURCE='../data/shared/inference_config.yml'
 GF_INFERENCE_COMPOSE_FILE_TARGET='../docker/llama_cpp/compose.override.yml'
+GF_INFERENCE_PRESET_NAME_DESIRED='../data/shared/inference_preset_name_target.txt'
+GF_INFERENCE_PRESET_NAME='../data/shared/inference_preset_name.txt'
 GF_INFERENCE_SERVICE_LOCK='../data/shared/INFERENCE_LOCK'
 GF_INFERENCE_SERVICE_UP_HASH='../data/shared/inference_up_hash.txt'
 GF_INFERENCE_SERVICE_UP_STATUS='../data/shared/inference_status.txt'
@@ -95,9 +97,9 @@ run_inference_server() {
 	fi
 
 	if [ "$forceInferenceServerRun" -eq 1 ]; then
-		log_inference_status "STOPPED"
 		cd "../docker/llama_cpp/"
 		docker compose down
+		log_inference_status "STOPPED"
 		sleep 2
 		if [ -f "../../.env" ]; then
 			export $(xargs <"../../.env")
@@ -109,6 +111,9 @@ run_inference_server() {
 		date +%s >"$GF_INFERENCE_SERVICE_UP_TIMESTAMP"
 		echo "$ymlSourceHash" >"$GF_INFERENCE_SERVICE_UP_HASH"
 		log_inference_status "LAUNCHING"
+		if [ -f "$GF_INFERENCE_PRESET_NAME_DESIRED" ]; then
+			cat "$GF_INFERENCE_PRESET_NAME_DESIRED" >"$GF_INFERENCE_PRESET_NAME"
+		fi
 	fi
 }
 

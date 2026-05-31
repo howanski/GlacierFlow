@@ -40,10 +40,12 @@ GlacierFlow runs llama.cpp inside Docker and lets you switch between model prese
 ┌──────────────────────┐     ┌──────────────────────┐
 │ glacierflow_inference│────▶│  data/shared/        │
 │    _select_preset    │     │  inference_config.yml│
-│                      │     └──────────┬───────────┘
-│  List available      │                │ copies
-│  Load by name/hash   │                ▼
-│  Track load times    │     ┌──────────────────────┐
+│                      │     │  inference_preset_   │
+│  List available      │     │    name_target.txt   │
+│  Load by name/hash   │     └──────────┬───────────┘
+│  Track load times    │                │ copies
+│                      │                ▼
+│                      │     ┌──────────────────────┐
 └──────────────────────┘     │ docker/llama_cpp/    │
                              │  compose.override.yml│
                              └──────────┬───────────┘
@@ -81,7 +83,8 @@ GlacierFlow runs llama.cpp inside Docker and lets you switch between model prese
 │       │   ├── examples/            # Example presets to copy
 │       │   └── local/               # Your custom presets
 │       ├── inference_status.txt     # Current status (gitignored)
-│       ├── inference_preset_name.txt
+│       ├── inference_preset_name.txt      # Currently active preset
+│       ├── inference_preset_name_target.txt # Desired preset (written by select_preset)
 │       ├── inference_loading_times.txt
 │       └── INFERENCE_LOCK           # Lock file (gitignored)
 ├── scripts/
@@ -109,13 +112,6 @@ Pick an example preset and copy it to your local presets directory:
 ```bash
 cp data/shared/inference_presets/examples/vulkan_8gb_gemma4_e4b_q5.yml \
    data/shared/inference_presets/local/
-```
-
-Then copy it as the active config:
-
-```bash
-cp data/shared/inference_presets/local/vulkan_8gb_gemma4_e4b_q5.yml \
-   data/shared/inference_config.yml
 ```
 
 ### 3. Configure environment
