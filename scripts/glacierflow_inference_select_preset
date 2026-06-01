@@ -9,7 +9,7 @@ GF_INFERENCE_PRESETS_DIR_LOCAL='../data/shared/inference_presets/local/'
 GF_INFERENCE_PRESETS_LOADING_TIMES='../data/shared/inference_loading_times.txt'
 GF_INFERENCE_SERVICE_UP_STATUS='../data/shared/inference_status.txt'
 GF_INFERENCE_URL="http://localhost:8080"
-GF_LOAD_TIMEOUT=300
+GF_LOAD_TIMEOUT=350
 #####
 
 skipLoadingTimeCheck=0
@@ -95,21 +95,23 @@ load_preset_file() {
 		fi
 
 		local loadingStart=$(date +%s)
-		echo "Waiting for daemon to load preset..."
 		local presetToLoad=$(cat "$GF_INFERENCE_PRESET_NAME_DESIRED")
+		echo "Waiting for daemon to load preset $presetToLoad..."
 		local loadingTimeEstimate=$(get_preset_loading_time $checkSum)
 		local isReady=$(is_preset_name_currently_running $presetToLoad)
+		local actualLoadingTime=0;
 		while [[ $isReady == '0' ]]; do
 			actualLoadingTime=$(($(date +%s) - $loadingStart))
 			if [ $actualLoadingTime -gt $GF_LOAD_TIMEOUT ]; then
 				# Probably loaded in blink of an eye
+				echo "Timeout reached :("
 				exit 0
 			fi
 			echo -ne "[ $(add_minimal_padding $actualLoadingTime 3 left) / $loadingTimeEstimate ]\r"
 			sleep 1
 			isReady=$(is_preset_name_currently_running $presetToLoad)
 		done
-		echo "Preset loaded!"
+		echo "Preset loaded in $actualLoadingTime s !"
 
 		if grep -q "^${checkSum} " "$GF_INFERENCE_PRESETS_LOADING_TIMES" 2>/dev/null; then
 			sed -i "s/^${checkSum} .*/${checkSum} ${actualLoadingTime}/" "$GF_INFERENCE_PRESETS_LOADING_TIMES"
