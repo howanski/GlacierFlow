@@ -1,0 +1,12 @@
+{
+    "messages": [
+        {
+            "role": "user",
+            "content": "Write in 100 words what can you do in Paris during vacation."
+        }
+    ],
+    "stream": false,
+    "return_progress": false,
+    "backend_sampling": false,
+    "timings_per_token": true
+}

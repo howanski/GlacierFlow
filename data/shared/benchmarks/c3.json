@@ -1,0 +1,12 @@
+{
+    "messages": [
+        {
+            "role": "user",
+            "content": "Optimize this script:\n```php\n<?php\n$users = [\n    ['name' => 'Alice', 'age' => 30, 'city' => 'New York'],\n    ['name' => 'Bob',   'age' => 25, 'city' => 'London'],\n    ['name' => 'Charlie','age' => 35, 'city' => 'Tokyo'],\n    // ... hundreds or thousands of entries\n];\n\n$output = \"\";\n$totalAge = 0;\n$count = 0;\n\nforeach ($users as $user) {\n    $output .= \"<p>Name: \" . $user['name'] . \", Age: \" . $user['age'] . \", City: \" . $user['city'] . \"</p>\";\n    $totalAge += $user['age'];\n    $count++;\n}\n\n$averageAge = $totalAge / $count;\n$output .= \"<p>Average Age: \" . $averageAge . \"</p>\";\n\necho $output;\n?>\n\n```"
+        }
+    ],
+    "stream": false,
+    "return_progress": false,
+    "backend_sampling": false,
+    "timings_per_token": true
+}

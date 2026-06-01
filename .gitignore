@@ -1,4 +1,5 @@
 .env
+data/shared/benchmarks/*.txt
 data/shared/inference_config.yml
 data/shared/inference_loading_times.txt
 data/shared/inference_preset_name_target.txt

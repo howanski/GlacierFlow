@@ -1,0 +1,12 @@
+{
+    "messages": [
+        {
+            "role": "user",
+            "content": "Write a bash script that moves all files from directory `/mnt/stuff_for_sorting/` to `/mnt/sorted_by_filetype/$filetype/` where $filetype can be 'mp3', 'jpg' and so on"
+        }
+    ],
+    "stream": false,
+    "return_progress": false,
+    "backend_sampling": false,
+    "timings_per_token": true
+}

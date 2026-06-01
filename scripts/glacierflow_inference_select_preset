@@ -82,7 +82,7 @@ load_preset_file() {
 		fi
 
 		cat "$1" >"$GF_INFERENCE_COMPOSE_FILE_SOURCE"
-		basename $1 | cut -d "." -f 1 >"$GF_INFERENCE_PRESET_NAME_DESIRED"
+		basename $1 ".yml" >"$GF_INFERENCE_PRESET_NAME_DESIRED"
 		checkSum=$desiredCheckSum
 
 		if [ "$skipLoadingTimeCheck" -eq 1 ]; then
@@ -131,13 +131,8 @@ load_preset() {
 	fi
 	for presetFile in $presetFiles; do
 		local fullPath=$presetFile
-		local presetName=$(basename $presetFile)
+		local presetName=$(basename $presetFile ".yml")
 		if [[ "$presetIdentifier" == "$presetName" ]]; then
-			load_preset_file $fullPath
-		fi
-
-		local presetNameShort=$(echo $presetName | cut -d "." -f 1)
-		if [[ "$presetIdentifier" == "$presetNameShort" ]]; then
 			load_preset_file $fullPath
 		fi
 
@@ -183,7 +178,7 @@ show_available_presets() {
 
 	for presetFile in $presetFiles; do
 		local fullPath=$presetFile
-		local presetName=$(basename $presetFile)
+		local presetName=$(basename $presetFile ".yml")
 		local checkSum=$(md5sum "$fullPath" | xargs | cut -d " " -f 1)
 		local loadingTime=$(get_preset_loading_time $checkSum)
 
@@ -192,7 +187,6 @@ show_available_presets() {
 			ctxSize="???"
 		fi
 
-		presetName=$(echo "$presetName" | cut -d '.' -f 1)
 		presetName=$(add_minimal_padding " - $presetName" 39)
 		loadingTime=$(add_minimal_padding "$loadingTime" 3 "left")
 		ctxSize=$(add_minimal_padding "$ctxSize" 6 "left")

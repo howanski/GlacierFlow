@@ -82,14 +82,21 @@ GlacierFlow runs llama.cpp inside Docker and lets you switch between model prese
 │       ├── inference_presets/
 │       │   ├── examples/            # Example presets to copy
 │       │   └── local/               # Your custom presets
+│       ├── benchmarks/              # Benchmark test cases
+│       │   ├── c1.json              # SQL query generation
+│       │   ├── c2.json              # Bash script generation
+│       │   ├── c3.json              # PHP optimization
+│       │   └── p1.json              # Creative writing
 │       ├── inference_status.txt     # Current status (gitignored)
 │       ├── inference_preset_name.txt      # Currently active preset
 │       ├── inference_preset_name_target.txt # Desired preset (written by select_preset)
 │       ├── inference_loading_times.txt
+│       ├── benchmarks/*.txt         # Benchmark results (gitignored)
 │       └── INFERENCE_LOCK           # Lock file (gitignored)
 ├── scripts/
 │   ├── glacierflow_host_daemon      # Background service
-│   └── glacierflow_inference_select_preset  # Preset selector CLI
+│   ├── glacierflow_inference_select_preset  # Preset selector CLI
+│   └── glacierflow_benchmark        # Multi-model benchmark runner
 ├── .env                             # Environment variables (gitignored)
 └── README.md
 ```
@@ -162,6 +169,37 @@ Preset files are Docker Compose YAML snippets that override the base `compose.ym
 - **command**: llama.cpp server arguments (model path, context size, GPU layers, etc.)
 - **devices**: GPU device passthrough (e.g., `/dev/dri/renderD128` for AMD)
 - **volumes**: Model directory mount paths
+
+Preset names are derived from their filename (`.yml` extension stripped). You can reference them by full name or by MD5 hash.
+
+---
+
+## Benchmarking
+
+GlacierFlow includes a benchmark runner that measures throughput (tokens/sec) across multiple models and problem types:
+
+```bash
+# Show results table (presets × benchmarks)
+./scripts/glacierflow_benchmark
+
+# Run benchmarks for the currently loaded model
+./scripts/glacierflow_benchmark run
+```
+
+The runner:
+- Executes each benchmark 3 times and reports the average TPS
+- Skips benchmarks already completed for a given model hash
+- Stores results in `data/shared/benchmarks/<benchmark_name>.txt` (one line per model hash)
+- Requires the inference server to be running (`RUNNING` status)
+
+### Benchmark problems
+
+| File | Type | Description |
+|------|------|-------------|
+| `c1.json` | SQL | Generate a MySQL query from a schema |
+| `c2.json` | Bash | Write a file-sorting script |
+| `c3.json` | PHP | Optimize a user-processing loop |
+| `p1.json` | Creative | Write a ~100-word travel description |
 
 
 ---
