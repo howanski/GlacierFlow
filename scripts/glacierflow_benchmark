@@ -40,9 +40,7 @@ has_binary() {
 }
 
 list_current_results() {
-	echo "tu lista pod model $1"
 	local currentModel=$1
-
 	local presetFiles=$(find $GF_INFERENCE_PRESETS_DIR_LOCAL | grep '.yml' | sort -f)
 	if [ -z "$presetFiles" ]; then
 		echo "Listing example presets (no local presets found)"

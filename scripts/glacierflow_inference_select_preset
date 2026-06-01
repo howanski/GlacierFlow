@@ -1,5 +1,6 @@
 #!/bin/bash
 #####
+GF_BENCHMARK_PRESETS_DIR='./../data/shared/benchmarks/'
 GF_INFERENCE_COMPOSE_FILE_SOURCE='../data/shared/inference_config.yml'
 GF_INFERENCE_COMPOSE_FILE_TARGET='../docker/llama_cpp/compose.override.yml'
 GF_INFERENCE_PRESET_NAME_DESIRED='../data/shared/inference_preset_name_target.txt'
@@ -34,6 +35,32 @@ fail_preflight_on_missing_binary() {
 		echo "Preflight check failed, missing binary from the system: $1"
 		exit 127
 	fi
+}
+
+get_mean_tps_for_preset() {
+	local presetChecksum=$1
+	local foundResults=0
+	local tpsSum=0
+	local benchmarkResult=""
+	local benchmarkResultFiles=$(find $GF_BENCHMARK_PRESETS_DIR | grep '.txt' | sort -f)
+	for benchmarkResultFile in $benchmarkResultFiles; do
+		if [ "$(cat $benchmarkResultFile | grep $presetChecksum | wc -l)" -eq 1 ]; then
+			benchmarkResult=$(cat $benchmarkResultFile | grep $presetChecksum | cut -d " " -f 2)
+			foundResults=$(($foundResults + 1))
+			tpsSum=$(echo "$tpsSum + $benchmarkResult" | bc -l)
+		fi
+	done
+	local meanVal="n/a"
+	if [ "$foundResults" -gt 0 ]; then
+		meanVal=$(echo "$tpsSum / $foundResults" | bc -l)
+		local numBeforeDot=$(echo "$meanVal" | cut -d "." -f 1)
+		local numAfterDot=$(echo "$meanVal" | cut -d "." -f 2)
+		numAfterDot=${numAfterDot:0:2}
+		#RoughButEnoughLol
+		meanVal="$numBeforeDot.$numAfterDot"
+	fi
+
+	echo "$meanVal"
 }
 
 get_preset_loading_time() {
@@ -99,7 +126,7 @@ load_preset_file() {
 		echo "Waiting for daemon to load preset $presetToLoad..."
 		local loadingTimeEstimate=$(get_preset_loading_time $checkSum)
 		local isReady=$(is_preset_name_currently_running $presetToLoad)
-		local actualLoadingTime=0;
+		local actualLoadingTime=0
 		while [[ $isReady == '0' ]]; do
 			actualLoadingTime=$(($(date +%s) - $loadingStart))
 			if [ $actualLoadingTime -gt $GF_LOAD_TIMEOUT ]; then
@@ -176,9 +203,19 @@ show_available_presets() {
 		currentPresetHash=$(md5sum "$GF_INFERENCE_COMPOSE_FILE_TARGET" | xargs | cut -d " " -f 1)
 	fi
 
+	local presetName=""
+	local presetNameLength=1
+	for presetFile in $presetFiles; do
+		presetName=$(basename $presetFile ".yml")
+		if [ "${#presetName}" -gt $presetNameLength ]; then
+			presetNameLength=$(echo "${#presetName}")
+		fi
+	done
+	presetNameLength=$(($presetNameLength + 2))
+
 	for presetFile in $presetFiles; do
 		local fullPath=$presetFile
-		local presetName=$(basename $presetFile ".yml")
+		presetName=$(basename $presetFile ".yml")
 		local checkSum=$(md5sum "$fullPath" | xargs | cut -d " " -f 1)
 		local loadingTime=$(get_preset_loading_time $checkSum)
 
@@ -187,15 +224,18 @@ show_available_presets() {
 			ctxSize="???"
 		fi
 
-		presetName=$(add_minimal_padding " - $presetName" 39)
+		local tps=$(get_mean_tps_for_preset $checkSum)
+
+		presetName=$(add_minimal_padding "- $presetName" $presetNameLength)
 		loadingTime=$(add_minimal_padding "$loadingTime" 3 "left")
 		ctxSize=$(add_minimal_padding "$ctxSize" 6 "left")
+		tps=$(add_minimal_padding "$tps" 6 "left")
 
-		local isActiveSuffix=""
+		local isActiveMarker="          "
 		if [[ "$checkSum" == "$currentPresetHash" ]]; then
-			isActiveSuffix=" [ ACTIVE ]"
+			isActiveMarker="[ ACTIVE ]"
 		fi
-		echo "$presetName [ ~ ${loadingTime} s ] [ CTX: $ctxSize ]$isActiveSuffix"
+		echo "$presetName [ ~ ${loadingTime} s ] [ CTX: $ctxSize ] $isActiveMarker [ TPS: $tps ]"
 
 	done
 }
