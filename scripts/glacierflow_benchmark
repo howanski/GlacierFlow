@@ -58,7 +58,7 @@ list_current_results() {
 			presetNameLength=$(echo "${#presetName}")
 		fi
 	done
-	presetNameLength=$(( $presetNameLength + 1 ))
+	presetNameLength=$(($presetNameLength + 1))
 
 	local lastBenchName=""
 	local benchmarkName=""
@@ -92,7 +92,7 @@ list_current_results() {
 		for benchmarkResultFile in $benchmarkResultFiles; do
 			benchmarkName=$(basename $benchmarkResultFile ".txt")
 
-			lastResult=$(benchmark_result_read $presetHash $benchmarkName )
+			lastResult=$(benchmark_result_read $presetHash $benchmarkName)
 
 			if [[ "$benchmarkName" == "$lastBenchName" ]]; then
 
@@ -165,25 +165,33 @@ run_benchmark_for_model() {
 	echo "Starting benchmark $benchmarkName..."
 
 	local sum=0
+	local hasErrors=0
 	for i in {1..3}; do
 		jsonResponse=$(
 			curl $GF_INFERENCE_URL/v1/chat/completions \
 				-H "Content-Type: application/json" \
 				-d @$benchmarkFile -s
 		)
-		predictionTps=$(echo "$jsonResponse" | jq '.timings.predicted_per_second' | xargs)
-		echo "- pass $i/3 TPS: $predictionTps"
-		sum=$(echo "$sum + $predictionTps" | bc -l)
+		if [ $? -ne 0 ]; then
+			echo "ERROR OCCURRED ON INFERENCE SERVER"
+			hasErrors=1
+		else
+			predictionTps=$(echo "$jsonResponse" | jq '.timings.predicted_per_second' | xargs)
+			echo "- pass $i/3 TPS: $predictionTps"
+			sum=$(echo "$sum + $predictionTps" | bc -l)
+		fi
 	done
-	local mean=$(echo "$sum/3" | bc -l)
-	local numBeforeDot=$(echo "$mean" | cut -d "." -f 1)
-	local numAfterDot=$(echo "$mean" | cut -d "." -f 2)
-	numAfterDot=${numAfterDot:0:2}
-	#RoughButEnoughLol
-	mean="$numBeforeDot.$numAfterDot"
-	echo "- average  TPS: $mean"
-	echo ""
-	benchmark_result_save $modelHash $benchmarkName $mean
+	if [ "$hasErrors" -eq 0 ]; then
+		local mean=$(echo "$sum/3" | bc -l)
+		local numBeforeDot=$(echo "$mean" | cut -d "." -f 1)
+		local numAfterDot=$(echo "$mean" | cut -d "." -f 2)
+		numAfterDot=${numAfterDot:0:2}
+		#RoughButEnoughLol
+		mean="$numBeforeDot.$numAfterDot"
+		echo "- average  TPS: $mean"
+		echo ""
+		benchmark_result_save $modelHash $benchmarkName $mean
+	fi
 }
 
 run_main() {
