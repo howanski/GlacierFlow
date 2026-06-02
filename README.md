@@ -136,13 +136,15 @@ GF_MODELS_DIRECTORY=/path/to/your/models
 Run the background service to spin up the inference server:
 
 ```bash
-./scripts/glacierflow_host_daemon
+cd scripts
+./glacierflow_host_daemon
 ```
 
 For a one-shot check (no daemon loop):
 
 ```bash
-./scripts/glacierflow_host_daemon --once
+cd scripts
+./glacierflow_host_daemon --once
 ```
 
 ### 5. Switch presets
@@ -150,14 +152,16 @@ For a one-shot check (no daemon loop):
 List available presets:
 
 ```bash
-./scripts/glacierflow_inference_select_preset
+cd scripts
+./glacierflow_inference_select_preset
 ```
 
 Load a preset by name or hash:
 
 ```bash
-./scripts/glacierflow_inference_select_preset vulkan_8gb_gemma4_e4b_q5
-./scripts/glacierflow_inference_select_preset <md5hash>
+cd scripts
+./glacierflow_inference_select_preset vulkan_8gb_gemma4_e4b_q5
+./glacierflow_inference_select_preset <md5hash>
 ```
 
 ---
@@ -180,10 +184,12 @@ GlacierFlow includes a benchmark runner that measures throughput (tokens/sec) ac
 
 ```bash
 # Show results table (presets × benchmarks)
-./scripts/glacierflow_benchmark
+cd scripts
+./glacierflow_benchmark
 
 # Run benchmarks for the currently loaded model
-./scripts/glacierflow_benchmark run
+cd scripts
+./glacierflow_benchmark run
 ```
 
 The runner:
