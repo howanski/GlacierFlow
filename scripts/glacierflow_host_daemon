@@ -100,13 +100,13 @@ run_inference_server() {
 		cd "../docker/llama_cpp/"
 		docker compose down
 		log_inference_status "STOPPED"
-		sleep 2
 		if [ -f "../../.env" ]; then
-			export $(xargs <"../../.env")
+			set -a
+			source "../../.env"
+			set +a
 		fi
 		docker compose pull
 		docker compose -p $GF_STACK_NAME up -d
-		sleep 1
 		cd "$localDir"
 		date +%s >"$GF_INFERENCE_SERVICE_UP_TIMESTAMP"
 		echo "$ymlSourceHash" >"$GF_INFERENCE_SERVICE_UP_HASH"
