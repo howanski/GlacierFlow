@@ -1,0 +1,13 @@
+#!/bin/bash
+cd /home/pi_dev/workdir
+clear
+date
+echo ""
+echo ""
+echo "Type pi    to start with new session"
+echo "Type pi -r to start with session selector"
+echo "Type pi -c to start with last session"
+echo "Ctrl+D to exit"
+echo ""
+echo ""
+bash

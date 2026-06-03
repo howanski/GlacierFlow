@@ -1,4 +1,7 @@
 .env
+data/pi_dev/config/agent/auth.json
+data/pi_dev/config/agent/bin
+data/pi_dev/config/agent/sessions
 data/shared/benchmarks/*.txt
 data/shared/inference_config.yml
 data/shared/inference_loading_times.txt
@@ -9,3 +12,4 @@ data/shared/inference_status.txt
 data/shared/inference_up_hash.txt
 data/shared/inference_up_timestamp.txt
 docker/llama_cpp/compose.override.yml
+data/pi_dev/config/agent/settings.json

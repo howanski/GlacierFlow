@@ -23,6 +23,7 @@ GlacierFlow runs llama.cpp inside Docker and lets you switch between model prese
 - Automatic container restarts when preset changes
 - Preset loading time tracking & status monitoring
 - Example configs for various GPU setups
+- Docker-based code generation assistant (pi.dev)
 
 ---
 
@@ -73,30 +74,40 @@ GlacierFlow runs llama.cpp inside Docker and lets you switch between model prese
 ```
 .
 ├── docker/
-│   └── llama_cpp/
-│       ├── compose.yml              # Base Docker Compose template
-│       └── compose.override.yml     # Generated from preset (gitignored)
+│   ├── llama_cpp/
+│   │   ├── compose.yml              # Base Docker Compose template
+│   │   └── compose.override.yml     # Generated from preset (gitignored)
+│   └── pi_dev/                      # Code generation assistant (coder)
+│       ├── Dockerfile               # pi.dev dev environment image
+│       ├── compose.yml              # Container orchestration
+│       ├── entrypoint               # Health tick script
+│       └── start                    # Interactive start script
 ├── data/
-│   └── shared/
-│       ├── inference_config.yml     # Active config source (gitignored)
-│       ├── inference_presets/
-│       │   ├── examples/            # Example presets to copy
-│       │   └── local/               # Your custom presets
-│       ├── benchmarks/              # Benchmark test cases
-│       │   ├── c1.json              # SQL query generation
-│       │   ├── c2.json              # Bash script generation
-│       │   ├── c3.json              # PHP optimization
-│       │   └── p1.json              # Creative writing
-│       ├── inference_status.txt     # Current status (gitignored)
-│       ├── inference_preset_name.txt      # Currently active preset
-│       ├── inference_preset_name_target.txt # Desired preset (written by select_preset)
-│       ├── inference_loading_times.txt
-│       ├── benchmarks/*.txt         # Benchmark results (gitignored)
-│       └── INFERENCE_LOCK           # Lock file (gitignored)
+│   ├── shared/
+│   │   ├── inference_config.yml     # Active config source (gitignored)
+│   │   ├── inference_presets/
+│   │   │   ├── examples/            # Example presets to copy
+│   │   │   └── local/               # Your custom presets
+│   │   ├── benchmarks/              # Benchmark test cases
+│   │   │   ├── c1.json              # SQL query generation
+│   │   │   ├── c2.json              # Bash script generation
+│   │   │   ├── c3.json              # PHP optimization
+│   │   │   └── p1.json              # Creative writing
+│   │   ├── inference_status.txt     # Current status (gitignored)
+│   │   ├── inference_preset_name.txt      # Currently active preset
+│   │   ├── inference_preset_name_target.txt # Desired preset (written by select_preset)
+│   │   ├── inference_loading_times.txt
+│   │   ├── benchmarks/*.txt         # Benchmark results (gitignored)
+│   │   └── INFERENCE_LOCK           # Lock file (gitignored)
+│   └── pi_dev/
+│       └── config/
+│           └── agent/
+│               └── models.json      # Model provider configuration
 ├── scripts/
 │   ├── glacierflow_host_daemon      # Background service
 │   ├── glacierflow_inference_select_preset  # Preset selector CLI
-│   └── glacierflow_benchmark        # Multi-model benchmark runner
+│   ├── glacierflow_benchmark        # Multi-model benchmark runner
+│   └── glacierflow_pi_code          # pi.dev container management
 ├── .env                             # Environment variables (gitignored)
 └── README.md
 ```
@@ -126,9 +137,10 @@ cp data/shared/inference_presets/examples/vulkan_8gb_gemma4_e4b_q5.yml \
 Create a `.env` file with your paths:
 
 ```env
-GF_LLAMA_SERVER_VERSION=server-vulkan
 GF_LLAMA_MEMORY_LIMIT=50g
+GF_LLAMA_SERVER_VERSION=server-vulkan
 GF_MODELS_DIRECTORY=/path/to/your/models
+GF_PI_DEV_WORKDIR=/path/to/coder/workdir
 ```
 
 ### 4. Start the daemon
@@ -139,6 +151,7 @@ Run the background service to spin up the inference server:
 cd scripts
 ./glacierflow_host_daemon
 ```
+Personally I've just added it to my crontab @reboot via thin wrapper in case it blows up (and fancy blocker when I launch Steam)
 
 For a one-shot check (no daemon loop):
 
@@ -226,6 +239,61 @@ The daemon tracks the server state in `data/shared/inference_status.txt`:
 
 ---
 
+## Coder: Code Generation Assistant
+
+GlacierFlow ships with a Dockerized [pi.dev](https://pi.dev) development environment for AI-assisted code generation. It runs inside a full-featured dev container with all common languages and tools pre-installed.
+
+### Setup
+
+1. **Configure the model provider** in `data/pi_dev/config/agent/models.json`:
+
+```json
+{
+  "providers": {
+    "glacierflow-llamacpp": {
+      "baseUrl": "http://glacierflow-llamacpp:8080/v1",
+      "api": "openai-completions",
+      "apiKey": "none",
+      "models": [
+        { "id": "glacierflow-llamacpp" }
+      ]
+    }
+  }
+}
+```
+
+2. **Set your inference preset** — the pi.dev container by default uses model you configured with `glacierflow_inference_select_preset` script.
+
+### Usage
+
+Run the management script to start, stop, or attach to the container:
+
+```bash
+cd scripts
+./glacierflow_pi_code
+```
+
+This presents an interactive menu:
+
+| Key | Action |
+|-----|--------|
+| `U` | Start the pi.dev container |
+| `D` | Stop the container |
+| `A` | Attach to the running container |
+| `R` | Rebuild / hard reset the container |
+| `X` | Exit |
+
+### Container Details
+
+- **Image**: Alpine-based with bash, git, npm, vim, rust, cargo, php, go, openjdk17, gradle, android-tools, and composer
+- **User**: Runs as non-root (`pi_dev`, UID 1000)
+- **Volume mounts**:
+  - Project root → `/pi_dev` (read-only)
+  - Config → `~/.pi` (read-write)
+  - Workdir → configurable via `GF_PI_DEV_WORKDIR` env var (read-write)
+
+---
+
 ## Remotes
 
 - [GitHub](https://github.com/howanski/GlacierFlow)
@@ -236,13 +304,14 @@ The daemon tracks the server state in `data/shared/inference_status.txt`:
 
 ## Roadmap
 
-- [ ] **coder** — Code generation assistant integration
-- [ ] **agent** — Autonomous agent mode
+- [x] **coder** — Code generation assistant integration
+- [ ] **coder improvements** — Add interactive menu and autonomous coding
 - [ ] **webui** — Web-based UI for preset management
+- [ ] **agent** — Autonomous agent mode
 
 ---
 
 ## License
 
 GlacierFlow itself is a collection of custom scripts — no license applies.
-Third-party software (llama.cpp, Docker, etc.) is subject to their respective licenses.
+Third-party software (llama.cpp, Docker, pi.dev etc.) is subject to their respective licenses.

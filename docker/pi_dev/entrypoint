@@ -1,0 +1,6 @@
+#!/bin/bash
+
+while true; do
+	echo "[HEALTH TICK] $(date)"
+	sleep 60
+done

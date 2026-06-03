@@ -1,0 +1,120 @@
+#!/bin/bash
+####
+GF_PI_DEV_SERVICE="glacierflow-pi-dev"
+GF_STACK_NAME="glacierflow"
+GF_INFERENCE_PRESET_NAME='../data/shared/inference_preset_name.txt'
+####
+
+is_pi_dev_running() {
+	if [ "$(docker ps | grep "$GF_PI_DEV_SERVICE" | wc -l)" -lt 1 ]; then
+		echo "0"
+	else
+		echo "1"
+	fi
+}
+
+pi_dev_attach() {
+	docker exec -it $GF_PI_DEV_SERVICE bash /pi_dev/start
+	run_main
+}
+
+pi_dev_reset() {
+	local localDir=$(pwd)
+	cd "../docker/pi_dev/"
+	docker compose build --no-cache
+	cd $localDir
+	run_main
+}
+
+pi_dev_start() {
+	echo "Starting pi.dev..."
+	local localDir=$(pwd)
+	cd "../docker/pi_dev/"
+	if [ -f "../../.env" ]; then
+		set -a
+		source "../../.env"
+		set +a
+	fi
+	docker compose -p $GF_STACK_NAME up -d
+	local isRunning="0"
+	while [[ $isRunning == "0" ]]; do
+		echo "waiting for container..."
+		isRunning=$(is_pi_dev_running)
+		sleep 1
+	done
+	cd $localDir
+	sleep 1
+	run_main
+}
+
+pi_dev_stop() {
+	echo "Stopping pi.dev..."
+	local localDir=$(pwd)
+	cd "../docker/pi_dev/"
+	docker stop $GF_PI_DEV_SERVICE
+	cd $localDir
+
+	sleep 1
+	run_main
+}
+
+run_main() {
+	local actionToRun
+	while true; do
+		local currentPresetName=""
+		if [ -f "$GF_INFERENCE_PRESET_NAME" ]; then
+			currentPresetName=$(cat "$GF_INFERENCE_PRESET_NAME")
+		fi
+		clear
+		echo ""
+		echo "pi.dev in a box!"
+		if [ ! -z "$currentPresetName" ]; then
+			echo "Inference preset: $currentPresetName"
+		fi
+		echo ""
+		echo "Select action:"
+		if [ "$(is_pi_dev_running)" -eq 1 ]; then
+			echo "[A] attach to pi.dev"
+			echo "[D] stop      pi.dev container"
+		else
+			echo "[U] start     pi.dev container"
+		fi
+		echo "[R] update / hard reset container"
+		echo "[X] exit"
+		echo ""
+		read -p "Selected action: " actionToRun
+		case "$actionToRun" in
+		x | X)
+			echo "👋 Bye!"
+			exit 0
+			break
+			;;
+		u | U)
+			clear
+			pi_dev_start
+			break
+			;;
+		d | D)
+			clear
+			pi_dev_stop
+			break
+			;;
+		a | A)
+			clear
+			pi_dev_attach
+			break
+			;;
+		r | R)
+			clear
+			pi_dev_reset
+			break
+			;;
+		*)
+			echo ""
+			;;
+		esac
+	done
+}
+
+clear
+run_main
