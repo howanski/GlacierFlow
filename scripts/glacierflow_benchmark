@@ -166,7 +166,16 @@ run_benchmark_for_model() {
 
 	local sum=0
 	local hasErrors=0
+	local timeTaken=0
+	local predictionTps=0
 	for i in {1..3}; do
+		echo "Pass $i/3 started at $(date +%H:%M:%S)"
+		if [ "$timeTaken" -gt 0 ]; then
+			start_epoch=$(date +%s)
+			finish_epoch=$((start_epoch + timeTaken))
+			estimatedFinish=$(date -d "@$finish_epoch" +%H:%M:%S 2>/dev/null)
+			echo "Estimated pass finish: $estimatedFinish"
+		fi
 		jsonResponse=$(
 			curl $GF_INFERENCE_URL/v1/chat/completions \
 				-H "Content-Type: application/json" \
@@ -177,7 +186,11 @@ run_benchmark_for_model() {
 			hasErrors=1
 		else
 			predictionTps=$(echo "$jsonResponse" | jq '.timings.predicted_per_second' | xargs)
-			echo "- pass $i/3 TPS: $predictionTps"
+			predictedTokens=$(echo "$jsonResponse" | jq '.timings.predicted_n' | xargs)
+			timeTaken=$(echo "$jsonResponse" | jq '.timings.predicted_ms' | xargs)
+			timeTaken=$(echo "$timeTaken / 1000" | bc -l)
+			timeTaken=$(echo "$timeTaken" | cut -d "." -f 1)
+			echo " --> pass $i/3 TPS: $predictionTps ($predictedTokens tokens in $timeTaken seconds)"
 			sum=$(echo "$sum + $predictionTps" | bc -l)
 		fi
 	done
@@ -188,7 +201,7 @@ run_benchmark_for_model() {
 		numAfterDot=${numAfterDot:0:2}
 		#RoughButEnoughLol
 		mean="$numBeforeDot.$numAfterDot"
-		echo "- average  TPS: $mean"
+		echo " -------> average TPS: $mean"
 		echo ""
 		benchmark_result_save $modelHash $benchmarkName $mean
 	fi
