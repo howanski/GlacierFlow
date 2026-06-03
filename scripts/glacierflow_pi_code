@@ -5,6 +5,19 @@ GF_STACK_NAME="glacierflow"
 GF_INFERENCE_PRESET_NAME='../data/shared/inference_preset_name.txt'
 ####
 
+inference_preset_change() {
+	local selectedPreset=""
+	while [ -z "$selectedPreset" ]; do
+		clear
+		./glacierflow_inference_select_preset
+		echo ""
+		read -p "Preset to load: " selectedPreset
+	done
+	./glacierflow_inference_select_preset $selectedPreset
+	sleep 1
+	run_main
+}
+
 is_pi_dev_running() {
 	if [ "$(docker ps | grep "$GF_PI_DEV_SERVICE" | wc -l)" -lt 1 ]; then
 		echo "0"
@@ -80,6 +93,8 @@ run_main() {
 			echo "[U] start     pi.dev container"
 		fi
 		echo "[R] update / hard reset container"
+		echo ""
+		echo "[P] change inference preset"
 		echo "[X] exit"
 		echo ""
 		read -p "Selected action: " actionToRun
@@ -107,6 +122,11 @@ run_main() {
 		r | R)
 			clear
 			pi_dev_reset
+			break
+			;;
+		p | P)
+			clear
+			inference_preset_change
 			break
 			;;
 		*)
