@@ -1,13 +1,74 @@
 #!/bin/bash
 cd /home/pi_dev/workdir
-clear
-date
-echo ""
-echo ""
-echo "Type pi    to start with new session"
-echo "Type pi -r to start with session selector"
-echo "Type pi -c to start with last session"
-echo "Ctrl+D to exit"
-echo ""
-echo ""
-bash
+
+run_bash() {
+	bash
+	run_main
+}
+
+run_pi() {
+	pi
+	run_main
+}
+
+run_pi_select() {
+	pi -r
+	run_main
+}
+
+run_pi_continue() {
+	pi -c
+	run_main
+}
+
+run_main() {
+	local actionToRun
+	while true; do
+		clear
+		echo ""
+		echo "You're in a pi.dev box!"
+		echo ""
+		echo "Select action:"
+		echo "[N] New session"
+		echo "[C] Continue last session"
+		echo "[S] Select session"
+		echo ""
+		echo "[B] Bash"
+		echo ""
+		echo "[X] exit"
+		echo ""
+		read -p "Selected action: " actionToRun
+		case "$actionToRun" in
+		x | X)
+			echo "👋 Bye!"
+			exit 0
+			break
+			;;
+		b | B)
+			clear
+			run_bash
+			break
+			;;
+		n | N)
+			clear
+			run_pi
+			break
+			;;
+		s | S)
+			clear
+			run_pi_select
+			break
+			;;
+		c | C)
+			clear
+			run_pi_continue
+			break
+			;;
+		*)
+			echo ""
+			;;
+		esac
+	done
+}
+
+run_main
