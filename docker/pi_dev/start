@@ -1,24 +1,69 @@
 #!/bin/bash
+
+GF_SCRIPTS_DIR="/pi_dev_scripts/builtin"
+
 cd /home/pi_dev/workdir
 
 run_bash() {
 	bash
-	run_main
 }
 
 run_pi() {
 	pi
-	run_main
 }
 
 run_pi_select() {
 	pi -r
-	run_main
 }
 
 run_pi_continue() {
 	pi -c
-	run_main
+}
+
+run_pi_interactive_with_script() {
+	local scriptName=$1
+	local fullScriptPath="$GF_SCRIPTS_DIR/$scriptName.txt"
+	if [ -f "$fullScriptPath" ]; then
+		local scriptContent=$(cat "$fullScriptPath")
+		echo "Starting script..."
+		pi "$scriptContent"
+	else
+		echo "ERROR: $fullScriptPath NOT FOUND"
+		sleep 5
+	fi
+}
+
+kickoff_menu() {
+	while true; do
+		clear
+		echo ""
+		echo "You're in a pi.dev box kick-off menu!"
+		echo ""
+		echo "Select action:"
+		echo ""
+		echo "[C] Start Code Review"
+		echo "[I] Propose Improvements"
+		echo ""
+		echo "[X] back to main menu"
+		echo ""
+		read -p "Selected action: " actionToRun
+		case "$actionToRun" in
+		x | X)
+			break
+			;;
+		c | C)
+			clear
+			run_pi_interactive_with_script "init_code_review"
+			;;
+		i | I)
+			clear
+			run_pi_interactive_with_script "init_improvements"
+			;;
+		*)
+			echo ""
+			;;
+		esac
+	done
 }
 
 run_main() {
@@ -33,9 +78,11 @@ run_main() {
 		echo "[C] Continue last session"
 		echo "[S] Select session"
 		echo ""
+		# echo "[A] Automation"
+		echo "[K] New session with builtin conversation-starter"
 		echo "[B] Bash"
 		echo ""
-		echo "[X] exit"
+		echo "[X] exit / detach from container"
 		echo ""
 		read -p "Selected action: " actionToRun
 		case "$actionToRun" in
@@ -47,22 +94,26 @@ run_main() {
 		b | B)
 			clear
 			run_bash
-			break
 			;;
 		n | N)
 			clear
 			run_pi
-			break
 			;;
 		s | S)
 			clear
 			run_pi_select
-			break
 			;;
 		c | C)
 			clear
 			run_pi_continue
-			break
+			;;
+		# a | A)
+		# 	clear
+		# 	automation_menu
+		# 	;;
+		k | k)
+			clear
+			kickoff_menu
 			;;
 		*)
 			echo ""

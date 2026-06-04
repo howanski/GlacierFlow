@@ -7,6 +7,7 @@ GF_INFERENCE_URL="http://localhost:8080"
 
 GF_INFERENCE_SERVICE_UP_STATUS='../data/shared/inference_status.txt'
 GF_INFERENCE_SERVICE_UP_HASH='../data/shared/inference_up_hash.txt'
+GF_INFERENCE_SERVICE_LOCK='../data/shared/INFERENCE_LOCK'
 
 GF_INFERENCE_PRESET_NAME='../data/shared/inference_preset_name.txt'
 GF_INFERENCE_PRESET_NAME_DESIRED='../data/shared/inference_preset_name_target.txt'

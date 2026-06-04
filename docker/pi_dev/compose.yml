@@ -10,6 +10,7 @@ services:
     volumes:
       - ./:/pi_dev:ro
       - ./../../data/pi_dev/config:/home/pi_dev/.pi:rw
+      - ./../../data/pi_dev/scripts:/pi_dev_scripts:rw
       - ${GF_PI_DEV_WORKDIR:-./../../data/pi_dev/workdir}:/home/pi_dev/workdir:rw
     restart: no
     logging:
