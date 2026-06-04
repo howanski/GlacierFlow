@@ -18,7 +18,6 @@ inference_preset_change() {
 	done
 	"$(dirname "$0")/glacierflow_inference_select_preset" "$selectedPreset"
 	sleep 1
-	run_main
 }
 
 is_pi_dev_running() {
@@ -31,15 +30,12 @@ is_pi_dev_running() {
 
 pi_dev_attach() {
 	docker exec -it "$GF_PI_DEV_SERVICE" bash /pi_dev/start
-	run_main
 }
 
 pi_dev_reset() {
-	local localDir=$(pwd)
 	cd "../docker/pi_dev/"
 	docker compose build --no-cache
-	cd "$localDir"
-	run_main
+	cd "$(dirname $0)"
 }
 
 pi_dev_start() {
@@ -60,7 +56,6 @@ pi_dev_start() {
 	done
 	cd "$localDir"
 	sleep 1
-	run_main
 }
 
 pi_dev_stop() {
@@ -71,7 +66,6 @@ pi_dev_stop() {
 	cd "$localDir"
 
 	sleep 1
-	run_main
 }
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -112,27 +106,22 @@ run_main() {
 		u | U)
 			tty_clear
 			pi_dev_start
-			break
 			;;
 		d | D)
 			tty_clear
 			pi_dev_stop
-			break
 			;;
 		a | A)
 			tty_clear
 			pi_dev_attach
-			break
 			;;
 		r | R)
 			tty_clear
 			pi_dev_reset
-			break
 			;;
 		p | P)
 			tty_clear
 			inference_preset_change
-			break
 			;;
 		*)
 			echo ""

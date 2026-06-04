@@ -1,7 +1,7 @@
 #!/bin/bash
 
-source "$(dirname "$0")/gf_common.sh"
-
+rootScriptDirectory=$(pwd)
+source "$rootScriptDirectory/gf_common.sh"
 # ── Script-specific constants ─────────────────────────────────────────────────
 
 GF_DAEMON_MODE_FREQUENCY=10
@@ -16,7 +16,9 @@ fi
 # ── Daemon helpers ────────────────────────────────────────────────────────────
 
 log_inference_status() {
+	local workingDir=$(pwd)
 	local currentStatus="UNKNOWN"
+	cd $rootScriptDirectory
 	if [ -f "$GF_INFERENCE_SERVICE_UP_STATUS" ]; then
 		currentStatus=$(cat "$GF_INFERENCE_SERVICE_UP_STATUS")
 	fi
@@ -25,15 +27,16 @@ log_inference_status() {
 		echo "$1" >"$GF_INFERENCE_SERVICE_UP_STATUS"
 		echo "Inference status change to: $1"
 	fi
+	cd $workingDir
 }
 
 run_inference_server() {
-	local localDir=$(pwd)
+	cd "$rootScriptDirectory"
 	if [ -f "$GF_INFERENCE_SERVICE_LOCK" ]; then
 		cd "../docker/llama_cpp/"
-		docker compose -p "$GF_STACK_NAME" down
+		docker stop "$GF_INFERENCE_SERVICE"
 		echo "Inference server locked"
-		cd "$localDir"
+		cd "$rootScriptDirectory"
 		log_inference_status "LOCKED"
 		return
 	fi
@@ -78,7 +81,7 @@ run_inference_server() {
 
 	if [ "$forceInferenceServerRun" -eq 1 ]; then
 		cd "../docker/llama_cpp/"
-		docker compose down
+		docker stop "$GF_INFERENCE_SERVICE"
 		log_inference_status "STOPPED"
 		if [ -f "../../.env" ]; then
 			set -a
@@ -87,7 +90,7 @@ run_inference_server() {
 		fi
 		docker compose pull
 		docker compose -p "$GF_STACK_NAME" up -d
-		cd "$localDir"
+		cd "$rootScriptDirectory"
 		date +%s >"$GF_INFERENCE_SERVICE_UP_TIMESTAMP"
 		echo "$ymlSourceHash" >"$GF_INFERENCE_SERVICE_UP_HASH"
 		log_inference_status "LAUNCHING"
