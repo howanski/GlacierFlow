@@ -23,40 +23,9 @@ GlacierFlow runs llama.cpp inside Docker and lets you switch between model prese
 - Automatic container restarts when preset changes
 - Preset loading time tracking & status monitoring
 - Example configs for various GPU setups
-- Docker-based code generation assistant (pi.dev)
+- Docker-based code generation assistant (pi.dev) with automation workflows
+- Multi-model benchmarking suite
 
----
-
-## Architecture
-
-```
-┌──────────────────────┐
-│  glacierflow_host_daemon   ← Background watcher (runs every 10s)
-│  - Monitors inference_config.yml   ← Detects preset changes
-│  - Manages Docker Compose lifecycle  ← Starts/stops container
-│  - Health-checks the server          ← Checks /ping endpoint
-└──────────┬─────────────┘
-           │ updates
-           ▼
-┌──────────────────────┐     ┌──────────────────────┐
-│ glacierflow_inference│────▶│  data/shared/        │
-│    _select_preset    │     │  inference_config.yml│
-│                      │     │  inference_preset_   │
-│  List available      │     │    name_target.txt   │
-│  Load by name/hash   │     └──────────┬───────────┘
-│  Track load times    │                │ copies
-│                      │                ▼
-│                      │     ┌──────────────────────┐
-└──────────────────────┘     │ docker/llama_cpp/    │
-                             │  compose.override.yml│
-                             └──────────┬───────────┘
-                                        │
-                                        ▼
-                             ┌──────────────────────┐
-                             │  llama.cpp (Docker)  │
-                             │  :8080 (HTTP API)    │
-                             └──────────────────────┘
-```
 
 ---
 
@@ -81,29 +50,49 @@ GlacierFlow runs llama.cpp inside Docker and lets you switch between model prese
 │       ├── Dockerfile               # pi.dev dev environment image
 │       ├── compose.yml              # Container orchestration
 │       ├── entrypoint               # Health tick script
-│       └── start                    # Interactive start script
+│       └── start                    # Interactive kick-off & automation menu
 ├── data/
+│   ├── models/                      # Model storage (gitkeep placeholder)
 │   ├── shared/
 │   │   ├── inference_config.yml     # Active config source (gitignored)
 │   │   ├── inference_presets/
 │   │   │   ├── examples/            # Example presets to copy
-│   │   │   └── local/               # Your custom presets
-│   │   ├── benchmarks/              # Benchmark test cases
+│   │   │   │   ├── vulkan_8gb_gemma4_e4b_q5.yml
+│   │   │   │   └── vulkan_8gb_qwen36_35b_q6_coding.yml
+│   │   │   └── local/               # Your custom presets (gitignored)
+│   │   ├── benchmarks/              # Benchmark test cases & results
 │   │   │   ├── c1.json              # SQL query generation
 │   │   │   ├── c2.json              # Bash script generation
 │   │   │   ├── c3.json              # PHP optimization
-│   │   │   └── p1.json              # Creative writing
+│   │   │   ├── p1.json              # Creative writing
+│   │   │   └── *.txt                # Benchmark results (gitignored)
 │   │   ├── inference_status.txt     # Current status (gitignored)
-│   │   ├── inference_preset_name.txt      # Currently active preset
-│   │   ├── inference_preset_name_target.txt # Desired preset (written by select_preset)
-│   │   ├── inference_loading_times.txt
-│   │   ├── benchmarks/*.txt         # Benchmark results (gitignored)
+│   │   ├── inference_preset_name.txt      # Currently active preset (gitignored)
+│   │   ├── inference_preset_name_target.txt # Desired preset (gitignored)
+│   │   ├── inference_loading_times.txt  # Load time history (gitignored)
+│   │   ├── inference_up_hash.txt      # Hash of running model (gitignored)
+│   │   ├── inference_up_timestamp.txt # Start timestamp (gitignored)
 │   │   └── INFERENCE_LOCK           # Lock file (gitignored)
 │   └── pi_dev/
-│       └── config/
-│           └── agent/
-│               └── models.json      # Model provider configuration
+│       ├── config/
+│       │   └── agent/
+│       │       ├── auth.json        # Authentication config (gitignored)
+│       │       ├── settings.json    # Agent settings (gitignored)
+│       │       ├── models.json      # Model provider configuration
+│       │       ├── bin/             # Bundled binaries (gitignored)
+│       │       │   ├── fd           # Fast file finder
+│       │       │   └── rg           # Fast grep (ripgrep)
+│       │       └── sessions/        # Session history (gitignored)
+│       └── scripts/
+│           └── builtin/             # Automation scripts
+│               ├── auto_critic.txt
+│               ├── auto_planner.txt
+│               ├── auto_programmer.txt
+│               ├── init_code_review.txt
+│               ├── init_improvements.txt
+│               └── init_readme.txt
 ├── scripts/
+│   ├── gf_common.sh                 # Shared library (constants & utils)
 │   ├── glacierflow_host_daemon      # Background service
 │   ├── glacierflow_inference_select_preset  # Preset selector CLI
 │   ├── glacierflow_benchmark        # Multi-model benchmark runner
@@ -189,6 +178,8 @@ Preset files are Docker Compose YAML snippets that override the base `compose.ym
 
 Preset names are derived from their filename (`.yml` extension stripped). You can reference them by full name or by MD5 hash.
 
+Example presets live in `inference_presets/examples/` (tracked). Your custom presets go in `inference_presets/local/` (gitignored).
+
 ---
 
 ## Benchmarking
@@ -262,7 +253,7 @@ GlacierFlow ships with a Dockerized [pi.dev](https://pi.dev) development environ
 }
 ```
 
-2. **Set your inference preset** — the pi.dev container by default uses model you configured with `glacierflow_inference_select_preset` script.
+2. **Set your inference preset** — the pi.dev container by default uses the model you configured with `glacierflow_inference_select_preset` script.
 
 ### Usage
 
@@ -283,6 +274,35 @@ This presents an interactive menu:
 | `R` | Rebuild / hard reset the container |
 | `X` | Exit |
 
+### Inside the Container
+
+Once inside, the `start` script provides an interactive menu with several modes:
+
+| Key | Action |
+|-----|--------|
+| `N` | New session |
+| `C` | Continue last session |
+| `S` | Select session |
+| `A` | **Automation** - AI-driven development workflow |
+| `K` | Kick-off menu (Code Review, Improvements, Readme) |
+| `B` | Bash shell |
+| `X` | Exit / detach |
+
+#### Automation Mode
+
+The automation menu provides AI-driven development workflows:
+
+| Key | Action |
+|-----|--------|
+| `S` | Prepare/update SKETCH file (high-level goals) |
+| `P` | Convert SKETCH → TODO (non-interactive planner) |
+| `Q` | Convert SKETCH → TODO (interactive planner) |
+| `T` | Prepare/update TODO file (exact implementation steps) |
+| `R` | Run automatic development from TODO |
+| `C` | Run automatic development with internal critic loop |
+
+The automation scripts (`data/pi_dev/scripts/builtin/`) guide the AI through structured development: planning, coding, and critiquing iterations.
+
 ### Container Details
 
 - **Image**: Alpine-based with bash, git, npm, vim, rust, cargo, php, go, openjdk17, gradle, android-tools, and composer
@@ -290,6 +310,7 @@ This presents an interactive menu:
 - **Volume mounts**:
   - Project root → `/pi_dev` (read-only)
   - Config → `~/.pi` (read-write)
+  - Scripts → `/pi_dev_scripts` (read-write, for builtin automation scripts)
   - Workdir → configurable via `GF_PI_DEV_WORKDIR` env var (read-write)
 
 ---
@@ -304,10 +325,10 @@ This presents an interactive menu:
 
 ## Roadmap
 
-- [x] **coder** — Code generation assistant integration
-- [ ] **coder improvements** — Add interactive menu and autonomous coding
-- [ ] **webui** — Web-based UI for preset management
-- [ ] **agent** — Autonomous agent mode
+- [x] **coder** - Code generation assistant integration
+- [x] **coder automation** - Interactive menu, SKETCH→TODO pipeline, auto-programmer, auto-critic
+- [ ] **webui** - Web-based UI for preset management
+- [ ] **agent** - Autonomous agent mode
 
 ---
 

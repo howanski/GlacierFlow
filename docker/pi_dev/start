@@ -128,6 +128,7 @@ kickoff_menu() {
 		echo ""
 		echo "[C] Start Code Review"
 		echo "[I] Propose Improvements"
+		echo "[R] Update Readme"
 		echo ""
 		echo "[X] back to main menu"
 		echo ""
@@ -143,6 +144,10 @@ kickoff_menu() {
 		i | I)
 			clear
 			run_pi_interactive_with_script "init_improvements"
+			;;
+		r | R)
+			clear
+			run_pi_interactive_with_script "init_readme"
 			;;
 		*)
 			echo ""
