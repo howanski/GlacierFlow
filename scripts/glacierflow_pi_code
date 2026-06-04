@@ -1,19 +1,22 @@
 #!/bin/bash
-####
+
+source "$(dirname "$0")/gf_common.sh"
+
+# ── Script-specific constants ─────────────────────────────────────────────────
+
 GF_PI_DEV_SERVICE="glacierflow-pi-dev"
-GF_STACK_NAME="glacierflow"
-GF_INFERENCE_PRESET_NAME='../data/shared/inference_preset_name.txt'
-####
+
+# ── pi.dev helpers ────────────────────────────────────────────────────────────
 
 inference_preset_change() {
 	local selectedPreset=""
 	while [ -z "$selectedPreset" ]; do
-		clear
-		./glacierflow_inference_select_preset
+		tty_clear
+		"$(dirname "$0")/glacierflow_inference_select_preset"
 		echo ""
 		read -p "Preset to load: " selectedPreset
 	done
-	./glacierflow_inference_select_preset $selectedPreset
+	"$(dirname "$0")/glacierflow_inference_select_preset" "$selectedPreset"
 	sleep 1
 	run_main
 }
@@ -27,7 +30,7 @@ is_pi_dev_running() {
 }
 
 pi_dev_attach() {
-	docker exec -it $GF_PI_DEV_SERVICE bash /pi_dev/start
+	docker exec -it "$GF_PI_DEV_SERVICE" bash /pi_dev/start
 	run_main
 }
 
@@ -35,7 +38,7 @@ pi_dev_reset() {
 	local localDir=$(pwd)
 	cd "../docker/pi_dev/"
 	docker compose build --no-cache
-	cd $localDir
+	cd "$localDir"
 	run_main
 }
 
@@ -48,14 +51,14 @@ pi_dev_start() {
 		source "../../.env"
 		set +a
 	fi
-	docker compose -p $GF_STACK_NAME up -d
+	docker compose -p "$GF_STACK_NAME" up -d
 	local isRunning="0"
 	while [[ $isRunning == "0" ]]; do
 		echo "waiting for container..."
 		isRunning=$(is_pi_dev_running)
 		sleep 1
 	done
-	cd $localDir
+	cd "$localDir"
 	sleep 1
 	run_main
 }
@@ -64,12 +67,14 @@ pi_dev_stop() {
 	echo "Stopping pi.dev..."
 	local localDir=$(pwd)
 	cd "../docker/pi_dev/"
-	docker stop $GF_PI_DEV_SERVICE
-	cd $localDir
+	docker stop "$GF_PI_DEV_SERVICE"
+	cd "$localDir"
 
 	sleep 1
 	run_main
 }
+
+# ── Main ──────────────────────────────────────────────────────────────────────
 
 run_main() {
 	local actionToRun
@@ -78,7 +83,7 @@ run_main() {
 		if [ -f "$GF_INFERENCE_PRESET_NAME" ]; then
 			currentPresetName=$(cat "$GF_INFERENCE_PRESET_NAME")
 		fi
-		clear
+		tty_clear
 		echo ""
 		echo "pi.dev in a box!"
 		if [ ! -z "$currentPresetName" ]; then
@@ -105,27 +110,27 @@ run_main() {
 			break
 			;;
 		u | U)
-			clear
+			tty_clear
 			pi_dev_start
 			break
 			;;
 		d | D)
-			clear
+			tty_clear
 			pi_dev_stop
 			break
 			;;
 		a | A)
-			clear
+			tty_clear
 			pi_dev_attach
 			break
 			;;
 		r | R)
-			clear
+			tty_clear
 			pi_dev_reset
 			break
 			;;
 		p | P)
-			clear
+			tty_clear
 			inference_preset_change
 			break
 			;;
@@ -136,5 +141,5 @@ run_main() {
 	done
 }
 
-clear
+tty_clear
 run_main

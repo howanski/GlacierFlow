@@ -1,51 +1,25 @@
 #!/bin/bash
-#####
-GF_BENCHMARK_PRESETS_DIR='./../data/shared/benchmarks/'
-GF_INFERENCE_COMPOSE_FILE_SOURCE='../data/shared/inference_config.yml'
-GF_INFERENCE_COMPOSE_FILE_TARGET='../docker/llama_cpp/compose.override.yml'
-GF_INFERENCE_PRESET_NAME_DESIRED='../data/shared/inference_preset_name_target.txt'
-GF_INFERENCE_PRESET_NAME='../data/shared/inference_preset_name.txt'
-GF_INFERENCE_PRESETS_DIR_EXAMPLE='../data/shared/inference_presets/examples/'
-GF_INFERENCE_PRESETS_DIR_LOCAL='../data/shared/inference_presets/local/'
+
+source "$(dirname "$0")/gf_common.sh"
+
+# ── Script-specific constants ─────────────────────────────────────────────────
+
 GF_INFERENCE_PRESETS_LOADING_TIMES='../data/shared/inference_loading_times.txt'
-GF_INFERENCE_SERVICE_UP_STATUS='../data/shared/inference_status.txt'
-GF_INFERENCE_URL="http://localhost:8080"
 GF_LOAD_TIMEOUT=350
-#####
 
 skipLoadingTimeCheck=0
 
-add_minimal_padding() {
-	local var="$1"
-	local min_len="${2:-2}"
-	local align="${3:-right}" # 'left' or 'right' (default)
-
-	while [[ ${#var} -lt min_len ]]; do
-		if [[ "$align" == "right" ]]; then
-			var+=" " # Append space
-		else
-			var=" $var" # Prepend space
-		fi
-	done
-	echo "$var"
-}
-
-fail_preflight_on_missing_binary() {
-	if [ "$(has_binary $1)" -ne "1" ]; then
-		echo "Preflight check failed, missing binary from the system: $1"
-		exit 127
-	fi
-}
+# ── Preset helpers ────────────────────────────────────────────────────────────
 
 get_mean_tps_for_preset() {
 	local presetChecksum=$1
 	local foundResults=0
 	local tpsSum=0
 	local benchmarkResult=""
-	local benchmarkResultFiles=$(find $GF_BENCHMARK_PRESETS_DIR | grep '.txt' | sort -f)
+	local benchmarkResultFiles=$(find "$GF_BENCHMARK_PRESETS_DIR" | grep '.txt' | sort -f)
 	for benchmarkResultFile in $benchmarkResultFiles; do
-		if [ "$(cat $benchmarkResultFile | grep $presetChecksum | wc -l)" -eq 1 ]; then
-			benchmarkResult=$(cat $benchmarkResultFile | grep $presetChecksum | cut -d " " -f 2)
+		if [ "$(cat "$benchmarkResultFile" | grep "$presetChecksum" | wc -l)" -eq 1 ]; then
+			benchmarkResult=$(cat "$benchmarkResultFile" | grep "$presetChecksum" | cut -d " " -f 2)
 			foundResults=$(($foundResults + 1))
 			tpsSum=$(echo "$tpsSum + $benchmarkResult" | bc -l)
 		fi
@@ -56,7 +30,6 @@ get_mean_tps_for_preset() {
 		local numBeforeDot=$(echo "$meanVal" | cut -d "." -f 1)
 		local numAfterDot=$(echo "$meanVal" | cut -d "." -f 2)
 		numAfterDot=${numAfterDot:0:2}
-		#RoughButEnoughLol
 		meanVal="$numBeforeDot.$numAfterDot"
 	fi
 
@@ -74,14 +47,6 @@ get_preset_loading_time() {
 		fi
 	fi
 	echo "999"
-}
-
-has_binary() {
-	if [ -f "$(which $1)" ]; then
-		echo "1"
-	else
-		echo "0"
-	fi
 }
 
 is_preset_name_currently_running() {
@@ -109,14 +74,14 @@ load_preset_file() {
 		fi
 
 		cat "$1" >"$GF_INFERENCE_COMPOSE_FILE_SOURCE"
-		basename $1 ".yml" >"$GF_INFERENCE_PRESET_NAME_DESIRED"
+		basename "$1" ".yml" >"$GF_INFERENCE_PRESET_NAME_DESIRED"
 		checkSum=$desiredCheckSum
 
 		if [ "$skipLoadingTimeCheck" -eq 1 ]; then
 			exit 0
 		fi
 
-		local currentStatus=$(cat $GF_INFERENCE_SERVICE_UP_STATUS)
+		local currentStatus=$(cat "$GF_INFERENCE_SERVICE_UP_STATUS")
 		if [[ $currentStatus == 'LOCKED' ]]; then
 			exit 0
 		fi
@@ -124,19 +89,18 @@ load_preset_file() {
 		local loadingStart=$(date +%s)
 		local presetToLoad=$(cat "$GF_INFERENCE_PRESET_NAME_DESIRED")
 		echo "Waiting for daemon to load preset $presetToLoad..."
-		local loadingTimeEstimate=$(get_preset_loading_time $checkSum)
-		local isReady=$(is_preset_name_currently_running $presetToLoad)
+		local loadingTimeEstimate=$(get_preset_loading_time "$checkSum")
+		local isReady=$(is_preset_name_currently_running "$presetToLoad")
 		local actualLoadingTime=0
 		while [[ $isReady == '0' ]]; do
 			actualLoadingTime=$(($(date +%s) - $loadingStart))
 			if [ $actualLoadingTime -gt $GF_LOAD_TIMEOUT ]; then
-				# Probably loaded in blink of an eye
 				echo "Timeout reached :("
 				exit 0
 			fi
-			echo -ne "[ $(add_minimal_padding $actualLoadingTime 3 left) / $loadingTimeEstimate ]\r"
+			echo -ne "[ $(add_minimal_padding "$actualLoadingTime" 3 left) / $loadingTimeEstimate ]\r"
 			sleep 1
-			isReady=$(is_preset_name_currently_running $presetToLoad)
+			isReady=$(is_preset_name_currently_running "$presetToLoad")
 		done
 		echo "Preset loaded in $actualLoadingTime s !"
 
@@ -152,50 +116,32 @@ load_preset_file() {
 load_preset() {
 	local presetIdentifier=$1
 
-	local presetFiles=$(find $GF_INFERENCE_PRESETS_DIR_LOCAL | grep '.yml')
+	local presetFiles=$(find "$GF_INFERENCE_PRESETS_DIR_LOCAL" | grep '.yml')
 	if [ -z "$presetFiles" ]; then
-		presetFiles=$(find $GF_INFERENCE_PRESETS_DIR_EXAMPLE | grep '.yml')
+		presetFiles=$(find "$GF_INFERENCE_PRESETS_DIR_EXAMPLE" | grep '.yml')
 	fi
 	for presetFile in $presetFiles; do
 		local fullPath=$presetFile
-		local presetName=$(basename $presetFile ".yml")
+		local presetName=$(basename "$presetFile" ".yml")
 		if [[ "$presetIdentifier" == "$presetName" ]]; then
-			load_preset_file $fullPath
+			load_preset_file "$fullPath"
 		fi
 
 		local checkSum=$(md5sum "$fullPath" | xargs | cut -d " " -f 1)
 		if [[ "$presetIdentifier" == "$checkSum" ]]; then
-			load_preset_file $fullPath
+			load_preset_file "$fullPath"
 		fi
 	done
 	echo "Preset not found: $presetIdentifier"
 	exit 1
 }
 
-run_main() {
-	run_preflight_checks
-	if [ -z "$1" ]; then
-		show_available_presets
-	else
-		load_preset $1
-	fi
-}
-
-run_preflight_checks() {
-	fail_preflight_on_missing_binary awk
-	fail_preflight_on_missing_binary basename
-	fail_preflight_on_missing_binary cat
-	fail_preflight_on_missing_binary find
-	fail_preflight_on_missing_binary grep
-	fail_preflight_on_missing_binary sed
-}
-
 show_available_presets() {
 	echo "Use one of below names as script's first argument to load preset:"
-	local presetFiles=$(find $GF_INFERENCE_PRESETS_DIR_LOCAL | grep '.yml' | sort -f)
+	local presetFiles=$(find "$GF_INFERENCE_PRESETS_DIR_LOCAL" | grep '.yml' | sort -f)
 	if [ -z "$presetFiles" ]; then
 		echo "Listing example presets (no local presets found)"
-		presetFiles=$(find $GF_INFERENCE_PRESETS_DIR_EXAMPLE | grep '.yml' | sort -f)
+		presetFiles=$(find "$GF_INFERENCE_PRESETS_DIR_EXAMPLE" | grep '.yml' | sort -f)
 	fi
 
 	local currentPresetHash="XYZ!@#"
@@ -206,7 +152,7 @@ show_available_presets() {
 	local presetName=""
 	local presetNameLength=1
 	for presetFile in $presetFiles; do
-		presetName=$(basename $presetFile ".yml")
+		presetName=$(basename "$presetFile" ".yml")
 		if [ "${#presetName}" -gt $presetNameLength ]; then
 			presetNameLength=$(echo "${#presetName}")
 		fi
@@ -215,16 +161,16 @@ show_available_presets() {
 
 	for presetFile in $presetFiles; do
 		local fullPath=$presetFile
-		presetName=$(basename $presetFile ".yml")
+		presetName=$(basename "$presetFile" ".yml")
 		local checkSum=$(md5sum "$fullPath" | xargs | cut -d " " -f 1)
-		local loadingTime=$(get_preset_loading_time $checkSum)
+		local loadingTime=$(get_preset_loading_time "$checkSum")
 
 		local ctxSize=$(grep "ctx-size" "$presetFile" | xargs | cut -d " " -f 2)
 		if [ -z "$ctxSize" ]; then
 			ctxSize="???"
 		fi
 
-		local tps=$(get_mean_tps_for_preset $checkSum)
+		local tps=$(get_mean_tps_for_preset "$checkSum")
 
 		presetName=$(add_minimal_padding "- $presetName" $presetNameLength)
 		loadingTime=$(add_minimal_padding "$loadingTime" 3 "left")
@@ -236,8 +182,30 @@ show_available_presets() {
 			isActiveMarker="[ ACTIVE ]"
 		fi
 		echo "$presetName [ ~ ${loadingTime} s ] [ CTX: $ctxSize ] $isActiveMarker [ TPS: $tps ]"
-
 	done
+}
+
+# ── Preflight ─────────────────────────────────────────────────────────────────
+
+run_preflight_checks() {
+	fail_preflight_on_missing_binary awk
+	fail_preflight_on_missing_binary basename
+	fail_preflight_on_missing_binary bc
+	fail_preflight_on_missing_binary cat
+	fail_preflight_on_missing_binary find
+	fail_preflight_on_missing_binary grep
+	fail_preflight_on_missing_binary sed
+}
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+run_main() {
+	run_preflight_checks
+	if [ -z "$1" ]; then
+		show_available_presets
+	else
+		load_preset "$1"
+	fi
 }
 
 if [ -z "$2" ]; then
@@ -246,5 +214,5 @@ else
 	skipLoadingTimeCheck=1
 fi
 
-clear
-run_main $1
+tty_clear
+run_main "$1"

@@ -1,59 +1,23 @@
 #!/bin/bash
 
-#####
-GF_BENCHMARK_PRESETS_DIR='./../data/shared/benchmarks/'
-GF_INFERENCE_PRESETS_DIR_EXAMPLE='../data/shared/inference_presets/examples/'
-GF_INFERENCE_PRESETS_DIR_LOCAL='../data/shared/inference_presets/local/'
-GF_INFERENCE_SERVICE_UP_HASH='../data/shared/inference_up_hash.txt'
-GF_INFERENCE_SERVICE_UP_STATUS='../data/shared/inference_status.txt'
-GF_INFERENCE_URL="http://localhost:8080"
-#####
+source "$(dirname "$0")/gf_common.sh"
 
-add_minimal_padding() {
-	local var="$1"
-	local min_len="${2:-2}"
-	local align="${3:-right}" # 'left' or 'right' (default)
-
-	while [[ ${#var} -lt min_len ]]; do
-		if [[ "$align" == "right" ]]; then
-			var+=" " # Append space
-		else
-			var=" $var" # Prepend space
-		fi
-	done
-	echo "$var"
-}
-
-fail_preflight_on_missing_binary() {
-	if [ "$(has_binary $1)" -ne "1" ]; then
-		echo "Preflight check failed, missing binary from the system: $1"
-		exit 127
-	fi
-}
-
-has_binary() {
-	if [ -f "$(which $1)" ]; then
-		echo "1"
-	else
-		echo "0"
-	fi
-}
+# ── Benchmark helpers ─────────────────────────────────────────────────────────
 
 list_current_results() {
 	local currentModel=$1
-	local presetFiles=$(find $GF_INFERENCE_PRESETS_DIR_LOCAL | grep '.yml' | sort -f)
+	local presetFiles=$(find "$GF_INFERENCE_PRESETS_DIR_LOCAL" | grep '.yml' | sort -f)
 	if [ -z "$presetFiles" ]; then
 		echo "Listing example presets (no local presets found)"
-		presetFiles=$(find $GF_INFERENCE_PRESETS_DIR_EXAMPLE | grep '.yml' | sort -f)
+		presetFiles=$(find "$GF_INFERENCE_PRESETS_DIR_EXAMPLE" | grep '.yml' | sort -f)
 	fi
 
 	local presetName=""
-	local presetHash=""
 	local presetNameLength=1
 	local prefix=" "
 	local partialLine=""
 	for presetFile in $presetFiles; do
-		presetName=$(basename $presetFile ".yml")
+		presetName=$(basename "$presetFile" ".yml")
 		if [ "${#presetName}" -gt $presetNameLength ]; then
 			presetNameLength=$(echo "${#presetName}")
 		fi
@@ -63,25 +27,25 @@ list_current_results() {
 	local lastBenchName=""
 	local benchmarkName=""
 	local lastResult=""
-	local benchmarkResultFiles=$(find $GF_BENCHMARK_PRESETS_DIR | grep '.txt' | sort -f)
+	local benchmarkResultFiles=$(find "$GF_BENCHMARK_PRESETS_DIR" | grep '.txt' | sort -f)
 
-	#HEADER
+	# HEADER
 	local printLine="  "
 	partialLine=$(add_minimal_padding " " $presetNameLength)
 	echo -n "$printLine$partialLine"
 
 	for benchmarkResultFile in $benchmarkResultFiles; do
-		benchmarkName=$(basename $benchmarkResultFile ".txt")
+		benchmarkName=$(basename "$benchmarkResultFile" ".txt")
 		lastBenchName=$benchmarkName
-		echo -n "$(add_minimal_padding $benchmarkName 7 left)"
+		echo -n "$(add_minimal_padding "$benchmarkName" 7 left)"
 	done
-
 	echo " "
-	#DATA
+
+	# DATA
 	for presetFile in $presetFiles; do
-		presetName=$(basename $presetFile ".yml")
+		presetName=$(basename "$presetFile" ".yml")
 		presetName=$(add_minimal_padding "$presetName" $presetNameLength)
-		presetHash=$(md5sum $presetFile | cut -d " " -f 1)
+		presetHash=$(md5sum "$presetFile" | cut -d " " -f 1)
 		prefix="   "
 		if [[ "$presetHash" == "$currentModel" ]]; then
 			prefix="-> "
@@ -90,17 +54,13 @@ list_current_results() {
 		echo -n "$prefix$presetName"
 
 		for benchmarkResultFile in $benchmarkResultFiles; do
-			benchmarkName=$(basename $benchmarkResultFile ".txt")
-
-			lastResult=$(benchmark_result_read $presetHash $benchmarkName)
+			benchmarkName=$(basename "$benchmarkResultFile" ".txt")
+			lastResult=$(benchmark_result_read "$presetHash" "$benchmarkName")
 
 			if [[ "$benchmarkName" == "$lastBenchName" ]]; then
-
-				echo "$(add_minimal_padding $lastResult 7 left)"
-
+				echo "$(add_minimal_padding "$lastResult" 7 left)"
 			else
-				echo -n "$(add_minimal_padding $lastResult 7 left)"
-
+				echo -n "$(add_minimal_padding "$lastResult" 7 left)"
 			fi
 		done
 	done
@@ -113,11 +73,10 @@ run_benchmarks_for_model() {
 	echo ""
 	echo "Benchmarking preset $1"
 	echo ""
-	local benchmarkFiles=$(find $GF_BENCHMARK_PRESETS_DIR | grep '.json' | sort -f)
+	local benchmarkFiles=$(find "$GF_BENCHMARK_PRESETS_DIR" | grep '.json' | sort -f)
 	for benchmarkFile in $benchmarkFiles; do
-		run_benchmark_for_model $1 $benchmarkFile
+		run_benchmark_for_model "$1" "$benchmarkFile"
 	done
-
 }
 
 benchmark_result_read() {
@@ -130,9 +89,9 @@ benchmark_result_read() {
 		return 0
 	fi
 
-	local hasResultLine=$(cat "$benchmarkResultFile" | grep $modelHash | wc -l)
+	local hasResultLine=$(cat "$benchmarkResultFile" | grep "$modelHash" | wc -l)
 	if [ "$hasResultLine" -eq 1 ]; then
-		cat "$benchmarkResultFile" | grep $modelHash | cut -d " " -f 2
+		cat "$benchmarkResultFile" | grep "$modelHash" | cut -d " " -f 2
 	else
 		echo "0"
 	fi
@@ -154,8 +113,8 @@ benchmark_result_save() {
 run_benchmark_for_model() {
 	local modelHash=$1
 	local benchmarkFile=$2
-	local benchmarkName=$(basename $benchmarkFile '.json')
-	local previousResult=$(benchmark_result_read $modelHash $benchmarkName)
+	local benchmarkName=$(basename "$benchmarkFile" '.json')
+	local previousResult=$(benchmark_result_read "$modelHash" "$benchmarkName")
 
 	if [[ "$previousResult" != "0" ]]; then
 		echo "Benchmark $benchmarkName was ran previously, result: $previousResult TPS"
@@ -177,9 +136,9 @@ run_benchmark_for_model() {
 			echo "Estimated pass finish: $estimatedFinish"
 		fi
 		jsonResponse=$(
-			curl $GF_INFERENCE_URL/v1/chat/completions \
+			curl "$GF_INFERENCE_URL/v1/chat/completions" \
 				-H "Content-Type: application/json" \
-				-d @$benchmarkFile -s
+				-d @"$benchmarkFile" -s
 		)
 		if [ $? -ne 0 ]; then
 			echo "ERROR OCCURRED ON INFERENCE SERVER"
@@ -199,30 +158,20 @@ run_benchmark_for_model() {
 		local numBeforeDot=$(echo "$mean" | cut -d "." -f 1)
 		local numAfterDot=$(echo "$mean" | cut -d "." -f 2)
 		numAfterDot=${numAfterDot:0:2}
-		#RoughButEnoughLol
 		mean="$numBeforeDot.$numAfterDot"
 		echo " -------> average TPS: $mean"
 		echo ""
-		benchmark_result_save $modelHash $benchmarkName $mean
+		benchmark_result_save "$modelHash" "$benchmarkName" "$mean"
 	fi
 }
 
-run_main() {
-	run_preflight_checks
-
-	local currentModelHash=$(cat "$GF_INFERENCE_SERVICE_UP_HASH")
-
-	if [ -z "$1" ]; then
-		list_current_results $currentModelHash
-	else
-		run_benchmarks_for_model $currentModelHash
-	fi
-}
+# ── Preflight ─────────────────────────────────────────────────────────────────
 
 run_preflight_checks() {
 	fail_preflight_on_missing_binary bc
 	fail_preflight_on_missing_binary cat
 	fail_preflight_on_missing_binary find
+	fail_preflight_on_missing_binary jq
 	fail_preflight_on_missing_binary grep
 	fail_preflight_on_missing_binary sed
 
@@ -233,5 +182,18 @@ run_preflight_checks() {
 	fi
 }
 
-clear
-run_main $1
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+run_main() {
+	run_preflight_checks
+	local currentModelHash=$(cat "$GF_INFERENCE_SERVICE_UP_HASH")
+
+	if [ -z "$1" ]; then
+		list_current_results "$currentModelHash"
+	else
+		run_benchmarks_for_model "$currentModelHash"
+	fi
+}
+
+tty_clear
+run_main "$1"

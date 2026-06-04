@@ -1,18 +1,11 @@
 #!/bin/bash
-#####
+
+source "$(dirname "$0")/gf_common.sh"
+
+# ── Script-specific constants ─────────────────────────────────────────────────
+
 GF_DAEMON_MODE_FREQUENCY=10
-GF_INFERENCE_COMPOSE_FILE_SOURCE='../data/shared/inference_config.yml'
-GF_INFERENCE_COMPOSE_FILE_TARGET='../docker/llama_cpp/compose.override.yml'
-GF_INFERENCE_PRESET_NAME_DESIRED='../data/shared/inference_preset_name_target.txt'
-GF_INFERENCE_PRESET_NAME='../data/shared/inference_preset_name.txt'
-GF_INFERENCE_SERVICE_LOCK='../data/shared/INFERENCE_LOCK'
-GF_INFERENCE_SERVICE_UP_HASH='../data/shared/inference_up_hash.txt'
-GF_INFERENCE_SERVICE_UP_STATUS='../data/shared/inference_status.txt'
-GF_INFERENCE_SERVICE_UP_TIMESTAMP='../data/shared/inference_up_timestamp.txt'
 GF_INFERENCE_SERVICE="glacierflow-llamacpp"
-GF_INFERENCE_URL="http://localhost:8080"
-GF_STACK_NAME="glacierflow"
-#####
 
 if [ -z "$1" ]; then
 	isDaemon=0
@@ -20,20 +13,7 @@ else
 	isDaemon=1
 fi
 
-fail_preflight_on_missing_binary() {
-	if [ "$(has_binary $1)" -ne "1" ]; then
-		echo "Preflight check failed, missing binary from the system: $1"
-		exit 127
-	fi
-}
-
-has_binary() {
-	if [ -f "$(which $1)" ]; then
-		echo "1"
-	else
-		echo "0"
-	fi
-}
+# ── Daemon helpers ────────────────────────────────────────────────────────────
 
 log_inference_status() {
 	local currentStatus="UNKNOWN"
@@ -51,9 +31,9 @@ run_inference_server() {
 	local localDir=$(pwd)
 	if [ -f "$GF_INFERENCE_SERVICE_LOCK" ]; then
 		cd "../docker/llama_cpp/"
-		docker compose -p $GF_STACK_NAME down
+		docker compose -p "$GF_STACK_NAME" down
 		echo "Inference server locked"
-		cd $localDir
+		cd "$localDir"
 		log_inference_status "LOCKED"
 		return
 	fi
@@ -62,10 +42,10 @@ run_inference_server() {
 		log_inference_status "NOT CONFIGURED"
 		return
 	fi
-	local ymlSourceHash=$(md5sum $GF_INFERENCE_COMPOSE_FILE_SOURCE | xargs | cut -d " " -f 1)
+	local ymlSourceHash=$(md5sum "$GF_INFERENCE_COMPOSE_FILE_SOURCE" | xargs | cut -d " " -f 1)
 	local ymlTargetHash='GlacierFlow'
 	if [ -f "$GF_INFERENCE_COMPOSE_FILE_TARGET" ]; then
-		ymlTargetHash=$(md5sum $GF_INFERENCE_COMPOSE_FILE_TARGET | xargs | cut -d " " -f 1)
+		ymlTargetHash=$(md5sum "$GF_INFERENCE_COMPOSE_FILE_TARGET" | xargs | cut -d " " -f 1)
 	fi
 
 	local forceInferenceServerRun=0
@@ -75,7 +55,7 @@ run_inference_server() {
 		if [ "$(docker ps | grep "$GF_INFERENCE_SERVICE" | wc -l)" -lt 1 ]; then
 			forceInferenceServerRun=1
 		else
-			# INFERENCE SERVER UP - is it responding?"
+			# INFERENCE SERVER UP - is it responding?
 			local responseCode=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 --max-time 5 "$GF_INFERENCE_URL")
 			local curlExitStatus=$?
 			if [ $curlExitStatus -eq 0 ]; then
@@ -106,7 +86,7 @@ run_inference_server() {
 			set +a
 		fi
 		docker compose pull
-		docker compose -p $GF_STACK_NAME up -d
+		docker compose -p "$GF_STACK_NAME" up -d
 		cd "$localDir"
 		date +%s >"$GF_INFERENCE_SERVICE_UP_TIMESTAMP"
 		echo "$ymlSourceHash" >"$GF_INFERENCE_SERVICE_UP_HASH"
@@ -117,25 +97,7 @@ run_inference_server() {
 	fi
 }
 
-run_main_service() {
-	echo "Starting GlacierFlow background service"
-	if [[ $isDaemon -eq 0 ]]; then
-		echo "[Will execute once and exit]"
-	fi
-	run_preflight_checks
-	while true; do
-		run_inference_server
-
-		echo "[HEALTH TICK] $(date)"
-		# If not in daemon mode, break immediately after the first iteration
-		if [[ $isDaemon -eq 0 ]]; then
-			break
-		fi
-		sleep $GF_DAEMON_MODE_FREQUENCY
-	done
-
-	echo "GlacierFlow background service stopped"
-}
+# ── Preflight ─────────────────────────────────────────────────────────────────
 
 run_preflight_checks() {
 	echo "Preflight check..."
@@ -151,5 +113,27 @@ run_preflight_checks() {
 	echo "Preflight check DONE"
 }
 
-clear
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+run_main_service() {
+	echo "Starting GlacierFlow background service"
+	if [[ $isDaemon -eq 0 ]]; then
+		echo "[Will execute once and exit]"
+	fi
+	run_preflight_checks
+	while true; do
+		run_inference_server
+
+		echo "[HEALTH TICK] $(date)"
+		# If not in daemon mode, break immediately after the first iteration
+		if [[ $isDaemon -eq 0 ]]; then
+			break
+		fi
+		sleep "$GF_DAEMON_MODE_FREQUENCY"
+	done
+
+	echo "GlacierFlow background service stopped"
+}
+
+tty_clear
 run_main_service
