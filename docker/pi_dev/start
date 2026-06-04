@@ -1,6 +1,8 @@
 #!/bin/bash
 
 GF_SCRIPTS_DIR="/pi_dev_scripts/builtin"
+GF_SKETCH_FILE="/home/pi_dev/workdir/GF_SKETCH.md"
+GF_TODO_FILE="/home/pi_dev/workdir/GF_TODO.md"
 
 cd /home/pi_dev/workdir
 
@@ -18,6 +20,89 @@ run_pi_select() {
 
 run_pi_continue() {
 	pi -c
+}
+
+automation_menu() {
+	while true; do
+		clear
+		echo ""
+		echo "You're in a pi.dev box automation menu!"
+		echo ""
+		echo "Select action:"
+		echo ""
+		echo "[S] Prepare/update SKETCH - file where you define what would you like to have coded"
+		if [ -f $GF_SKETCH_FILE ]; then
+			echo "[P] Convert SKETCH to TODO file"
+			echo "[Q] Convert SKETCH to TODO file with interactive shell"
+		fi
+		echo "[T] Prepare/update TODO   - file where you define exact steps for automatic coder"
+		if [ -f $GF_TODO_FILE ]; then
+			echo "[R] Run automatic development based on TODO file"
+			echo "[C] Run automatic development based on TODO file with internal critic"
+		fi
+		echo ""
+		echo "[X] back to main menu"
+		echo ""
+		read -p "Selected action: " actionToRun
+		case "$actionToRun" in
+		x | X)
+			break
+			;;
+		s | S)
+			clear
+			vim $GF_SKETCH_FILE
+			;;
+		p | P)
+			clear
+			run_pi_noninteractive_with_script "auto_planner"
+			;;
+		q | Q)
+			clear
+			run_pi_interactive_with_script "auto_planner"
+			;;
+		t | T)
+			clear
+			vim $GF_TODO_FILE
+			;;
+		r | R)
+			clear
+			local roundNumber=1
+			while [[ -f "$GF_TODO_FILE" ]]; do
+				echo "Running iteration #$roundNumber"
+				run_pi_noninteractive_with_script "auto_programmer"
+				roundNumber=$((roundNumber + 1))
+			done
+			;;
+		c | C)
+			clear
+			local roundNumber=1
+			while [[ -f "$GF_TODO_FILE" ]]; do
+				echo "Running iteration #$roundNumber"
+				run_pi_noninteractive_with_script "auto_programmer"
+				if [ -f $GF_TODO_FILE ]; then
+					run_pi_noninteractive_with_script "auto_critic"
+				fi
+				roundNumber=$((roundNumber + 1))
+			done
+			;;
+		*)
+			echo ""
+			;;
+		esac
+	done
+}
+
+run_pi_noninteractive_with_script() {
+	local scriptName=$1
+	local fullScriptPath="$GF_SCRIPTS_DIR/$scriptName.txt"
+	if [ -f "$fullScriptPath" ]; then
+		local scriptContent=$(cat "$fullScriptPath")
+		echo "Running script $scriptName..."
+		pi -p "$scriptContent"
+	else
+		echo "ERROR: $fullScriptPath NOT FOUND"
+		sleep 5
+	fi
 }
 
 run_pi_interactive_with_script() {
@@ -78,7 +163,7 @@ run_main() {
 		echo "[C] Continue last session"
 		echo "[S] Select session"
 		echo ""
-		# echo "[A] Automation"
+		echo "[A] Automation"
 		echo "[K] New session with builtin conversation-starter"
 		echo "[B] Bash"
 		echo ""
@@ -107,10 +192,10 @@ run_main() {
 			clear
 			run_pi_continue
 			;;
-		# a | A)
-		# 	clear
-		# 	automation_menu
-		# 	;;
+		a | A)
+			clear
+			automation_menu
+			;;
 		k | k)
 			clear
 			kickoff_menu

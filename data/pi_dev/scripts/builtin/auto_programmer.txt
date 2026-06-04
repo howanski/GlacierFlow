@@ -1,0 +1,11 @@
+Pick up work described in GF_TODO.md
+Do not try to complete entire app, you only need to:
+- analyze current application state
+- check if GF_TODO.md is correct
+- progress app development by ONE logical and consistent step (the smaller step, the better)
+- when step is done, update GF_TODO.md to contain up-to-date list of what have been done and what needs to be done
+Do not install anything unless it is absolutely essential.
+You can add positions to todo list and rearrange it whenever you see fit, but do not add new features - only performance/quality tasks.
+Be precise - the next step will be performed by someone else.
+When everything is complete, remove GF_TODO.md
+Always commit all changes after ending your turn.

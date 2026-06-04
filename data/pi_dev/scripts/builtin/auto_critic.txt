@@ -1,0 +1,7 @@
+Read GF_TODO.md file
+Your goal is to check if planned steps make sense and if done steps are correct.
+Update GF_TODO.md file if you think planned steps are wrong or tasks marked as done are not done well.
+Do not update any other file, only GF_TODO.md.
+You can add positions to todo list and rearrange it, but do not add new features - only performance/quality tasks.
+Remove any manual tests from todo list - QA will be performed independently, during development we only use automated tests.
+Be precise - the next step will be performed by someone else.
