@@ -1,2 +1,3 @@
 What can be improved in project now without adding features?
-Let's focus 10 or less most important improvements.
+Let's focus on 10 or less most important improvements.
+Don't start working yet, I need to take a look at your findings first.

@@ -5,7 +5,20 @@
       "api": "openai-completions",
       "apiKey": "none",
       "models": [
-        { "id": "glacierflow-llamacpp" }
+        {
+          "id": "glacierflow-default"
+        },
+        {
+          "id": "glacierflow-instruct",
+          "reasoning": false
+        },
+        {
+          "id": "glacierflow-think",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "off": null
+          }
+        }
       ]
     }
   }
