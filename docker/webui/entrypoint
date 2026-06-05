@@ -2,17 +2,29 @@
 cd /app
 
 BINARY=/app/webui
+SUM_FILE=/app/main.md5
 
 # Commented-out commands, useful when I'll bump docker base image
 # go mod init howanski/main
 # go get github.com/gin-gonic/gin
 
-# TODO: some sort of versioning so I know when to regenerate binary
-
-if [ ! -f "$BINARY" ]; then
-  echo "Building binary..."
-  go build -o "$BINARY" main.go
-  chmod o+w "$BINARY"
+if [ -f "$BINARY" ]; then
+	echo "Checking go source code against changes..."
+	controlSum="main.go"
+	if [ -f "$SUM_FILE" ]; then
+		controlSum=$(cat "$SUM_FILE")
+	fi
+	currentControlSum=$(md5sum "main.go")
+	if [[ "$controlSum" != "$currentControlSum" ]]; then
+		echo "$currentControlSum" >"$SUM_FILE"
+		rm -f "$BINARY"
+	fi
 fi
 
+if [ ! -f "$BINARY" ]; then
+	echo "Building binary..."
+	go build -o "$BINARY" main.go
+fi
+
+echo "Starting server..."
 exec "$BINARY"

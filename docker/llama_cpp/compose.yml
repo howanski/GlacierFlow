@@ -9,7 +9,7 @@ services:
     volumes:
       - ${GF_MODELS_DIRECTORY:-./../../data/models}:/models:ro
     command: >
-      --TODO RENAME PRESET FILE TO 'compose.override.yml'
+      --drop 'compose.override.yml' into this directory
     restart: no
     deploy:
       resources:

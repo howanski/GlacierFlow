@@ -67,8 +67,15 @@ function updateRunningModel(currentModel) {
     const el = document.getElementById('runningModel');
     if (currentModel && currentModel.length > 0) {
         el.innerHTML = `<span class="name">${escapeHtml(currentModel)}</span>`;
+        el.onclick = () => {
+            const url = window.location.href.replace(/:\d{2,5}\b/, ':8080');
+            window.open(url, '_blank');
+        };
+        el.style.cursor = 'pointer';
     } else {
         el.innerHTML = '<span class="none">No model loaded</span>';
+        el.onclick = null;
+        el.style.cursor = '';
     }
 }
 
