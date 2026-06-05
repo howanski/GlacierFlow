@@ -1,6 +1,6 @@
 #!/bin/bash
-
-source "$(dirname "$0")/gf_common.sh"
+rootScriptDirectory=$(pwd)
+source "$rootScriptDirectory/gf_common.sh"
 
 # ── Script-specific constants ─────────────────────────────────────────────────
 
@@ -33,14 +33,15 @@ pi_dev_attach() {
 }
 
 pi_dev_reset() {
+	cd "$rootScriptDirectory"
 	cd "../docker/pi_dev/"
-	docker compose build --no-cache
-	cd "$(dirname $0)"
+	docker compose -p "$GF_STACK_NAME" build --no-cache
+	cd "$rootScriptDirectory"
 }
 
 pi_dev_start() {
 	echo "Starting pi.dev..."
-	local localDir=$(pwd)
+	cd "$rootScriptDirectory"
 	cd "../docker/pi_dev/"
 	if [ -f "../../.env" ]; then
 		set -a
@@ -54,18 +55,15 @@ pi_dev_start() {
 		isRunning=$(is_pi_dev_running)
 		sleep 1
 	done
-	cd "$localDir"
-	sleep 1
+	cd "$rootScriptDirectory"
 }
 
 pi_dev_stop() {
 	echo "Stopping pi.dev..."
-	local localDir=$(pwd)
+	cd "$rootScriptDirectory"
 	cd "../docker/pi_dev/"
 	docker stop "$GF_PI_DEV_SERVICE"
-	cd "$localDir"
-
-	sleep 1
+	cd "$rootScriptDirectory"
 }
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -81,15 +79,16 @@ run_main() {
 		echo ""
 		echo "pi.dev in a box!"
 		if [ ! -z "$currentPresetName" ]; then
+			echo ""
 			echo "Inference preset: $currentPresetName"
 		fi
 		echo ""
 		echo "Select action:"
 		if [ "$(is_pi_dev_running)" -eq 1 ]; then
 			echo "[A] attach to pi.dev"
-			echo "[D] stop      pi.dev container"
+			echo "[D] stop pi.dev container"
 		else
-			echo "[U] start     pi.dev container"
+			echo "[U] start pi.dev container"
 		fi
 		echo "[R] update / hard reset container"
 		echo ""
@@ -117,6 +116,7 @@ run_main() {
 			;;
 		r | R)
 			tty_clear
+			pi_dev_stop
 			pi_dev_reset
 			;;
 		p | P)
