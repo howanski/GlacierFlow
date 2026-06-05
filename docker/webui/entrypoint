@@ -1,0 +1,6 @@
+#!/bin/ash
+cd /app
+# Commented-out commands, useful when I'll bump docker base image
+# go mod init howanski/main
+# go get github.com/gin-gonic/gin
+go run main.go

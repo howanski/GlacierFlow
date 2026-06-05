@@ -30,6 +30,19 @@ log_inference_status() {
 	cd $workingDir
 }
 
+run_web_ui() {
+	echo "Starting WEB UI..."
+	cd "$rootScriptDirectory"
+	cd "../docker/webui/"
+	if [ -f "../../.env" ]; then
+		set -a
+		source "../../.env"
+		set +a
+	fi
+	docker compose -p "$GF_STACK_NAME" up -d
+	cd "$rootScriptDirectory"
+}
+
 run_inference_server() {
 	cd "$rootScriptDirectory"
 	if [ -f "$GF_INFERENCE_SERVICE_LOCK" ]; then
@@ -124,6 +137,7 @@ run_main_service() {
 		echo "[Will execute once and exit]"
 	fi
 	run_preflight_checks
+	run_web_ui
 	while true; do
 		run_inference_server
 

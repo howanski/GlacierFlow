@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} — Admin</title>
+    <link rel="stylesheet" href="/css/index.css">
+</head>
+<body>
+    <div class="container">
+        <h1>{{.title}} Admin</h1>
+
+        <!-- Server Status -->
+        <div class="card">
+            <div class="card-title">Server Status</div>
+            <div class="status-row">
+                <div class="status-indicator">
+                    <span class="dot" id="statusDot"></span>
+                    <span id="statusText">Loading…</span>
+                </div>
+                <button class="btn" id="lockBtn" onclick="toggleLock()">Lock</button>
+            </div>
+        </div>
+
+        <!-- Currently Selected Model -->
+        <div class="card">
+            <div class="card-title">Currently Selected Model</div>
+            <div class="model-loaded" id="runningModel">
+                <span class="none">No model loaded</span>
+            </div>
+        </div>
+
+        <!-- Available Models -->
+        <div class="card">
+            <div class="card-title">Available Models</div>
+            <table class="model-table">
+                <thead>
+                    <tr>
+                        <th>Model Name</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="modelTableBody">
+                    <tr><td colspan="2" style="text-align:center;color:var(--text-muted);">Loading…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="/js/index.js"></script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+services:
+  glacierflow-web-ui:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    container_name: "glacierflow-web-ui"
+    environment:
+      - GIN_MODE=release
+    ports:
+      - "${GF_WEB_UI_PORT:-8090}:8080"
+    volumes:
+      - ./:/app
+      - ./../../data/shared:/app/shared:rw
+    restart: no
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"

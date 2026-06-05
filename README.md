@@ -9,7 +9,7 @@
 
 # GlacierFlow
 
-A lightweight toolkit for managing local AI inference servers (llama.cpp) on Linux, with hot-swap model presets and automatic container orchestration.
+A lightweight toolkit for managing local AI inference servers (llama.cpp) on Linux, with hot-swap model presets and automatic container orchestration. Includes Web UI, TUI and pi.dev container for software development.
 
 ---
 
@@ -25,7 +25,7 @@ GlacierFlow runs llama.cpp inside Docker and lets you switch between model prese
 - Example configs for various GPU setups
 - Docker-based code generation assistant (pi.dev) with automation workflows
 - Multi-model benchmarking suite
-
+- Web-based UI for preset management and status monitoring
 
 ---
 
@@ -35,71 +35,6 @@ GlacierFlow runs llama.cpp inside Docker and lets you switch between model prese
 - Docker & Docker Compose
 - GPU drivers (Vulkan for AMD/NVIDIA)
 - Bash, curl, grep, awk, md5sum, and other coreutils
-
----
-
-## Project Structure
-
-```
-.
-├── docker/
-│   ├── llama_cpp/
-│   │   ├── compose.yml              # Base Docker Compose template
-│   │   └── compose.override.yml     # Generated from preset (gitignored)
-│   └── pi_dev/                      # Code generation assistant (coder)
-│       ├── Dockerfile               # pi.dev dev environment image
-│       ├── compose.yml              # Container orchestration
-│       ├── entrypoint               # Health tick script
-│       └── start                    # Interactive kick-off & automation menu
-├── data/
-│   ├── models/                      # Model storage (gitkeep placeholder)
-│   ├── shared/
-│   │   ├── inference_config.yml     # Active config source (gitignored)
-│   │   ├── inference_presets/
-│   │   │   ├── examples/            # Example presets to copy
-│   │   │   │   ├── vulkan_8gb_gemma4_e4b_q5.yml
-│   │   │   │   └── vulkan_8gb_qwen36_35b_q6_coding.yml
-│   │   │   └── local/               # Your custom presets (gitignored)
-│   │   ├── benchmarks/              # Benchmark test cases & results
-│   │   │   ├── c1.json              # SQL query generation
-│   │   │   ├── c2.json              # Bash script generation
-│   │   │   ├── c3.json              # PHP optimization
-│   │   │   ├── p1.json              # Creative writing
-│   │   │   └── *.txt                # Benchmark results (gitignored)
-│   │   ├── inference_status.txt     # Current status (gitignored)
-│   │   ├── inference_preset_name.txt      # Currently active preset (gitignored)
-│   │   ├── inference_preset_name_target.txt # Desired preset (gitignored)
-│   │   ├── inference_loading_times.txt  # Load time history (gitignored)
-│   │   ├── inference_up_hash.txt      # Hash of running model (gitignored)
-│   │   ├── inference_up_timestamp.txt # Start timestamp (gitignored)
-│   │   └── INFERENCE_LOCK           # Lock file (gitignored)
-│   └── pi_dev/
-│       ├── config/
-│       │   └── agent/
-│       │       ├── auth.json        # Authentication config (gitignored)
-│       │       ├── settings.json    # Agent settings (gitignored)
-│       │       ├── models.json      # Model provider configuration
-│       │       ├── bin/             # Bundled binaries (gitignored)
-│       │       │   ├── fd           # Fast file finder
-│       │       │   └── rg           # Fast grep (ripgrep)
-│       │       └── sessions/        # Session history (gitignored)
-│       └── scripts/
-│           └── builtin/             # Automation scripts
-│               ├── auto_critic.txt
-│               ├── auto_planner.txt
-│               ├── auto_programmer.txt
-│               ├── init_code_review.txt
-│               ├── init_improvements.txt
-│               └── init_readme.txt
-├── scripts/
-│   ├── gf_common.sh                 # Shared library (constants & utils)
-│   ├── glacierflow_host_daemon      # Background service
-│   ├── glacierflow_inference_select_preset  # Preset selector CLI
-│   ├── glacierflow_benchmark        # Multi-model benchmark runner
-│   └── glacierflow_pi_code          # pi.dev container management
-├── .env                             # Environment variables (gitignored)
-└── README.md
-```
 
 ---
 
@@ -130,6 +65,7 @@ GF_LLAMA_MEMORY_LIMIT=50g
 GF_LLAMA_SERVER_VERSION=server-vulkan
 GF_MODELS_DIRECTORY=/path/to/your/models
 GF_PI_DEV_WORKDIR=/path/to/coder/workdir
+GF_WEB_UI_PORT=8090
 ```
 
 ### 4. Start the daemon
@@ -165,6 +101,37 @@ cd scripts
 ./glacierflow_inference_select_preset vulkan_8gb_gemma4_e4b_q5
 ./glacierflow_inference_select_preset <md5hash>
 ```
+
+---
+
+## Web UI
+
+GlacierFlow includes a web-based management interface for monitoring and controlling the inference server and presets.
+
+### Setup
+
+Make sure `GF_WEB_UI_PORT` is set in your `.env` file:
+
+```env
+GF_WEB_UI_PORT=8090
+```
+
+### Usage
+
+Start the daemon first:
+
+```bash
+cd scripts
+./glacierflow_host_daemon
+```
+
+Open `http://localhost:8090` in your browser. The UI provides:
+
+- **Preset management** — list, select, and track active presets
+- **Status monitoring** — (almost) real-time server status (RUNNING, LOADING, STOPPED, etc.)
+- **Lock/unlock** — to force keep inference server off when in locked state
+
+The web UI communicates directly with the shared data directory, so it stays in sync with the daemon and CLI tools.
 
 ---
 
@@ -327,7 +294,7 @@ The automation scripts (`data/pi_dev/scripts/builtin/`) guide the AI through str
 
 - [x] **coder** - Code generation assistant integration
 - [x] **coder automation** - Interactive menu, SKETCH→TODO pipeline, auto-programmer, auto-critic
-- [ ] **webui** - Web-based UI for preset management
+- [x] **webui** - Web-based UI for preset management
 - [ ] **agent** - Autonomous agent mode
 
 ---
