@@ -173,5 +173,5 @@ function escapeHtml(str) {
 refreshStatus();
 refreshModels();
 
-// Poll every 10s
-setInterval(refreshStatus, 10000);
+// Poll every 3s
+setInterval(refreshStatus, 3000);

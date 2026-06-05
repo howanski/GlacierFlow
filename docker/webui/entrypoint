@@ -1,6 +1,18 @@
 #!/bin/ash
 cd /app
+
+BINARY=/app/webui
+
 # Commented-out commands, useful when I'll bump docker base image
 # go mod init howanski/main
 # go get github.com/gin-gonic/gin
-go run main.go
+
+# TODO: some sort of versioning so I know when to regenerate binary
+
+if [ ! -f "$BINARY" ]; then
+  echo "Building binary..."
+  go build -o "$BINARY" main.go
+  chmod o+w "$BINARY"
+fi
+
+exec "$BINARY"
