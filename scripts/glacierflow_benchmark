@@ -174,12 +174,6 @@ run_preflight_checks() {
 	fail_preflight_on_missing_binary jq
 	fail_preflight_on_missing_binary grep
 	fail_preflight_on_missing_binary sed
-
-	local inferenceServerStatus=$(cat "$GF_INFERENCE_SERVICE_UP_STATUS")
-	if [[ "$inferenceServerStatus" != "RUNNING" ]]; then
-		echo "No model loaded"
-		exit 1
-	fi
 }
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -187,10 +181,15 @@ run_preflight_checks() {
 run_main() {
 	run_preflight_checks
 	local currentModelHash=$(cat "$GF_INFERENCE_SERVICE_UP_HASH")
+	local inferenceServerStatus=$(cat "$GF_INFERENCE_SERVICE_UP_STATUS")
 
 	if [ -z "$1" ]; then
 		list_current_results "$currentModelHash"
 	else
+		if [[ "$inferenceServerStatus" != "RUNNING" ]]; then
+			echo "Inference not running"
+			exit 1
+		fi
 		run_benchmarks_for_model "$currentModelHash"
 	fi
 }

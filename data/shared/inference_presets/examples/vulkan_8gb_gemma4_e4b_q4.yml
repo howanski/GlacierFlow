@@ -1,4 +1,4 @@
-# HF: https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF
+# HF: https://huggingface.co/unsloth/gemma-4-E4B-it-qat-GGUF
 # Fast vision/voice/tools enabled assistant
 # Example config for AMD RX 6600 + Ryzen 5 5600 + 64GB DDR4
 #
@@ -14,8 +14,8 @@ services:
       --image-max-tokens 1120
       --image-min-tokens 1120
       --min-p 0.05
-      --mmproj /models/unsloth/gemma-4-E4B-it-GGUF/mmproj-F32.gguf
-      --model /models/unsloth/gemma-4-E4B-it-GGUF/gemma-4-E4B-it-Q5_K_M.gguf
+      --mmproj /models/unsloth/gemma-4-E4B-it-qat-GGUF/mmproj-F32.gguf
+      --model /models/unsloth/gemma-4-E4B-it-qat-GGUF/gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf
       --n_gpu_layers 99
       --no-mmap
       --parallel 1

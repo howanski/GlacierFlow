@@ -72,7 +72,7 @@ run_inference_server() {
 			forceInferenceServerRun=1
 		else
 			# INFERENCE SERVER UP - is it responding?
-			local responseCode=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 --max-time 5 "$GF_INFERENCE_URL")
+			local responseCode=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 --max-time 5 "$GF_INFERENCE_URL/health")
 			local curlExitStatus=$?
 			if [ $curlExitStatus -eq 0 ]; then
 				if [ "$responseCode" == "503" ]; then
