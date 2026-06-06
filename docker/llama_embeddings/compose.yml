@@ -1,0 +1,16 @@
+services:
+  glacierflow-embeddings:
+    image: ghcr.io/ggml-org/llama.cpp:${GF_LLAMA_SERVER_VERSION:-server-vulkan}
+    container_name: glacierflow-embeddings
+    ports:
+      - "${GF_EMBEDDING_PORT:-8060}:8080"
+    command: >
+      # copy to compose.override.yml without '#' to enable embedding server
+      # -hf ggml-org/embeddinggemma-300M-GGUF
+      # --embeddings
+    restart: no
+    logging:
+      driver: json-file
+      options:
+          max-size: "5m"
+          max-file: "2"

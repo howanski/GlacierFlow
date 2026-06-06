@@ -9,7 +9,7 @@
 
 # GlacierFlow
 
-A lightweight toolkit for managing local AI inference servers (llama.cpp) on Linux, with hot-swap model presets and automatic container orchestration. Includes Web UI, TUI and pi.dev container for software development.
+A lightweight toolkit for managing local AI inference servers (llama.cpp) on Linux, with hot-swap model presets, embedding server support, and automatic container orchestration. Includes Web UI, TUI and pi.dev container for software development.
 
 ---
 
@@ -26,6 +26,7 @@ GlacierFlow runs llama.cpp inside Docker and lets you switch between model prese
 - Docker-based code generation assistant (pi.dev) with automation workflows
 - Multi-model benchmarking suite
 - Web-based UI for preset management and status monitoring
+- Embedding server (llama.cpp) for vector embeddings, toggleable via override config
 
 ---
 
@@ -197,6 +198,36 @@ The daemon tracks the server state in `data/shared/inference_status.txt`:
 
 ---
 
+## Embedding Server
+
+GlacierFlow includes a configurable llama.cpp embedding server for generating vector embeddings. It is disabled by default and can be enabled by creating an override config.
+
+### Setup
+
+1. **Enable the server** by creating `docker/llama_embeddings/compose.override.yml` with your desired command:
+
+```yaml
+services:
+  glacierflow-embeddings:
+    command: >
+      -hf ggml-org/embeddinggemma-300M-GGUF
+      --embeddings
+```
+
+2. **Configure the port** in your `.env` file (defaults to 8060):
+
+```env
+GF_EMBEDDING_PORT=8060
+```
+
+The embedding server starts automatically alongside the main daemon when the override config is present.
+
+### Usage
+
+Once running, the embedding server exposes an OpenAI-compatible API at `http://localhost:8060/v1/embeddings`.
+
+---
+
 ## Coder: Code Generation Assistant
 
 GlacierFlow ships with a Dockerized [pi.dev](https://pi.dev) development environment for AI-assisted code generation. It runs inside a full-featured dev container with all common languages and tools pre-installed.
@@ -295,6 +326,7 @@ The automation scripts (`data/pi_dev/scripts/builtin/`) guide the AI through str
 - [x] **coder** - Code generation assistant integration
 - [x] **coder automation** - Interactive menu, SKETCH→TODO pipeline, auto-programmer, auto-critic
 - [x] **webui** - Web-based UI for preset management
+- [x] **embeddings** - llama.cpp embedding server
 - [ ] **agent** - Autonomous agent mode
 
 ---

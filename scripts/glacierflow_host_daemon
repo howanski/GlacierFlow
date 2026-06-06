@@ -30,6 +30,21 @@ log_inference_status() {
 	cd $workingDir
 }
 
+run_embedding_server() {
+	cd "$rootScriptDirectory"
+	if [ -f "../docker/llama_embeddings/compose.override.yml" ]; then
+		echo "Starting Embedding Server..."
+		cd "../docker/llama_embeddings/"
+		if [ -f "../../.env" ]; then
+			set -a
+			source "../../.env"
+			set +a
+		fi
+		docker compose -p "$GF_STACK_NAME" up -d
+		cd "$rootScriptDirectory"
+	fi
+}
+
 run_web_ui() {
 	echo "Starting WEB UI..."
 	cd "$rootScriptDirectory"
@@ -137,6 +152,7 @@ run_main_service() {
 		echo "[Will execute once and exit]"
 	fi
 	run_preflight_checks
+	run_embedding_server
 	run_web_ui
 	while true; do
 		run_inference_server

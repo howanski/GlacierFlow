@@ -15,3 +15,4 @@ data/shared/inference_up_timestamp.txt
 docker/llama_cpp/compose.override.yml
 docker/webui/main.md5
 docker/webui/webui
+docker/llama_embeddings/compose.override.yml
