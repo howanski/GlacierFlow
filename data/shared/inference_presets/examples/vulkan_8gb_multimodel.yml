@@ -1,0 +1,18 @@
+services:
+  glacierflow-llamacpp:
+    devices:
+      - "/dev/dri/renderD128:/dev/dri/renderD128"
+# This way we define model in ini file instead of here
+# Router mode is experimental and will confuse metrics
+# but it is useful if you need fast model switching
+#
+# You also need to use proper model [identifier] when calling llama-server api
+    command: >
+      --host 0.0.0.0
+      --parallel 1
+      --port 8080
+      --seed 42
+      --threads 6
+      --models-dir '/models'
+      --models-preset '/models/vulkan_8gb_multimodel.ini'
+      --models-max 1

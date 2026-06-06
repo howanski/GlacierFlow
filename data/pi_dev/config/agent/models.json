@@ -6,14 +6,30 @@
       "apiKey": "none",
       "models": [
         {
-          "id": "glacierflow-default"
+          "id": "glacierflow-coder-default"
         },
         {
-          "id": "glacierflow-instruct",
-          "reasoning": false
+          "id": "glacierflow-coder-heavy"
         },
         {
-          "id": "glacierflow-think",
+          "id": "glacierflow-coder-fast"
+        },
+        {
+          "id": "glacierflow-coder-thinking-default",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "off": null
+          }
+        },
+        {
+          "id": "glacierflow-coder-thinking-heavy",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "off": null
+          }
+        },
+        {
+          "id": "glacierflow-coder-thinking-fast",
           "reasoning": true,
           "thinkingLevelMap": {
             "off": null

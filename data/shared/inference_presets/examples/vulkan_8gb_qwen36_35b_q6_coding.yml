@@ -16,7 +16,7 @@ services:
       --host 0.0.0.0
       --min-p 0.0
       --model /models/unsloth/Qwen3.6-35B-A3B-MTP-GGUF/Qwen3.6-35B-A3B-UD-Q6_K.gguf
-      --n_gpu_layers 99
+      --gpu-layers 999
       --no-mmap
       --no-mmproj
       --parallel 1

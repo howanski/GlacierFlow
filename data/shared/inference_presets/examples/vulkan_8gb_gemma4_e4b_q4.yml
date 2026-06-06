@@ -16,7 +16,7 @@ services:
       --min-p 0.05
       --mmproj /models/unsloth/gemma-4-E4B-it-qat-GGUF/mmproj-F32.gguf
       --model /models/unsloth/gemma-4-E4B-it-qat-GGUF/gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf
-      --n_gpu_layers 99
+      --gpu-layers 999
       --no-mmap
       --parallel 1
       --port 8080
