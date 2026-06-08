@@ -144,6 +144,7 @@ func main() {
 	r.LoadHTMLGlob("front/html/*")
 	r.Static("/css", "front/css")
 	r.Static("/js", "front/js")
+	r.Static("/favicon", "front/files/favicon")
 
 	r.GET("/", func(c *gin.Context) {
 		c.HTML(
