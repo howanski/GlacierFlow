@@ -4,8 +4,11 @@ services:
     # https://github.com/ggml-org/llama.cpp/pkgs/container/llama.cpp/versions?filters%5Bversion_type%5D=tagged
     image: ghcr.io/ggml-org/llama.cpp:${GF_LLAMA_SERVER_VERSION:-server-vulkan}
     container_name: glacierflow-llamacpp
-    ports:
-      - "8080:8080"
+    # By default I prefer everything to run via fifo proxy
+    # In my use case hot-swapping model in the middle of other model inference results in data stream cut-off
+    # That does not stop you from overriding ports and ignoring proxy completely
+    # ports:
+    #   - "8080:8080"
     volumes:
       - ${GF_MODELS_DIRECTORY:-./../../data/models}:/models:ro
     command: >

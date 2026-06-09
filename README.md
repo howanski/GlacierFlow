@@ -27,6 +27,7 @@ GlacierFlow runs llama.cpp inside Docker and lets you switch between model prese
 - Multi-model benchmarking suite
 - Web-based UI for preset management and status monitoring
 - Embedding server (llama.cpp) for vector embeddings, toggleable via override config
+- FIFO proxy for serializing chat requests (prevents stream cut-offs during model hot-swap)
 
 ---
 
@@ -198,6 +199,25 @@ The daemon tracks the server state in `data/shared/inference_status.txt`:
 
 ---
 
+## FIFO Proxy
+
+GlacierFlow includes a Go-based FIFO (first-in-first-out) proxy that sits between clients and the llama.cpp inference server. It serializes `/v1/chat/` requests so they are processed strictly one at a time, preventing SSE stream cut-offs when the model is hot-swapped mid-inference.
+
+### How It Works
+
+- **Serialized routing**: `/v1/chat/` requests are queued and dispatched one-by-one to the backend
+- **Parallel routing**: All other routes (health checks, non-chat endpoints) are proxied in parallel via standard reverse proxy
+- **Auto-rebuild**: The entrypoint detects source changes and rebuilds the Go binary automatically
+- **Restart loop**: If the proxy crashes, it restarts after a 2-second delay
+
+### Configuration
+
+The proxy runs on port **8070** (container port 8080). It is started automatically by the daemon — no manual setup required.
+
+If you prefer to bypass the proxy entirely, uncomment the `ports` section in `docker/llama_cpp/compose.yml` and point your clients directly at port 8080 (Or create preset with ports section override).
+
+---
+
 ## Embedding Server
 
 GlacierFlow includes a configurable llama.cpp embedding server for generating vector embeddings. It is disabled by default and can be enabled by creating an override config.
@@ -240,7 +260,7 @@ GlacierFlow ships with a Dockerized [pi.dev](https://pi.dev) development environ
 {
   "providers": {
     "glacierflow-llamacpp": {
-      "baseUrl": "http://glacierflow-llamacpp:8080/v1",
+      "baseUrl": "http://glacierflow-proxy:8080/v1",
       "api": "openai-completions",
       "apiKey": "none",
       "models": [
@@ -250,6 +270,8 @@ GlacierFlow ships with a Dockerized [pi.dev](https://pi.dev) development environ
   }
 }
 ```
+
+> **Note**: By default this points through the FIFO proxy (`glacierflow-proxy`) so chat requests are serialized. If you bypass the proxy, change the URL to `http://glacierflow-llamacpp:8080/v1`.
 
 2. **Set your inference preset** — the pi.dev container by default uses the model you configured with `glacierflow_inference_select_preset` script.
 
@@ -327,6 +349,7 @@ The automation scripts (`data/pi_dev/scripts/builtin/`) guide the AI through str
 - [x] **coder automation** - Interactive menu, SKETCH→TODO pipeline, auto-programmer, auto-critic
 - [x] **webui** - Web-based UI for preset management
 - [x] **embeddings** - llama.cpp embedding server
+- [x] **fifo-proxy** - Go-based FIFO proxy for serializing chat requests
 - [ ] **agent** - Autonomous agent mode
 
 ---

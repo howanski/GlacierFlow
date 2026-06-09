@@ -3,7 +3,7 @@
 
 # ── Shared Constants ──────────────────────────────────────────────────────────
 
-GF_INFERENCE_URL="http://localhost:8080"
+GF_INFERENCE_URL="http://localhost:8070"
 
 GF_INFERENCE_SERVICE_LOCK='../data/shared/INFERENCE_LOCK'
 GF_INFERENCE_SERVICE_UP_HASH='../data/shared/inference_up_hash.txt'

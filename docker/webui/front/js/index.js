@@ -68,7 +68,7 @@ function updateRunningModel(currentModel) {
     if (currentModel && currentModel.length > 0) {
         el.innerHTML = `<span class="name">${escapeHtml(currentModel)}</span>`;
         el.onclick = () => {
-            const url = window.location.href.replace(/:\d{2,5}\b/, ':8080');
+            const url = window.location.href.replace(/:\d{2,5}\b/, ':8070');
             window.open(url, '_blank');
         };
         el.style.cursor = 'pointer';
