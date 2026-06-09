@@ -18,3 +18,9 @@ services:
       options:
         max-size: "5m"
         max-file: "2"
+    healthcheck:
+      test: ["CMD", "pi", "--version" ]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
