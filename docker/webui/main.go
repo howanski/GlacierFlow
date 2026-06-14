@@ -15,12 +15,12 @@ import (
 // ---- File paths ----
 
 const (
-	configTargetPath     = "shared/inference_config.yml"
-	lockFilePath         = "shared/INFERENCE_LOCK"
-	modelFilePath        = "shared/inference_preset_name.txt"
-	modelsDir            = "shared/inference_presets/local"
-	nameTargetPath       = "shared/inference_preset_name_target.txt"
-	statusFilePath       = "shared/inference_status.txt"
+	configTargetPath = "shared/inference_config.yml"
+	lockFilePath     = "shared/INFERENCE_LOCK"
+	modelFilePath    = "shared/inference_preset_name.txt"
+	modelsDir        = "shared/inference_presets/local"
+	nameTargetPath   = "shared/inference_preset_name_target.txt"
+	statusFilePath   = "shared/inference_status.txt"
 )
 
 // ---- Helpers ----
@@ -153,6 +153,14 @@ func main() {
 			gin.H{
 				"title": "GlacierFlow",
 			},
+		)
+	})
+
+	r.GET("/tools/stats-viewer", func(c *gin.Context) {
+		c.HTML(
+			http.StatusOK,
+			"stats_view.html",
+			nil,
 		)
 	})
 

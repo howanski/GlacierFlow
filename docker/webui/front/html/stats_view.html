@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log File Plotter</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        #clear-all-btn {
+            padding: 6px 14px;
+            border: none;
+            border-radius: 4px;
+            background: #dc3912;
+            color: #fff;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        #clear-all-btn:hover {
+            background: #b02d0e;
+        }
+        .controls label {
+            font-weight: 500;
+            font-size: 14px;
+        }
+        #chart-container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #legend {
+            max-width: 1200px;
+            margin: 10px auto 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 8px 12px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #legend .legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+        }
+        #legend .swatch {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            border: 1px solid rgba(0,0,0,0.15);
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <label for="file-input">Upload .log files:</label>
+        <input type="file" id="file-input" multiple accept=".log">
+        <button id="clear-all-btn">Clear all</button>
+    </div>
+    <div id="chart-container">
+        <canvas id="chart"></canvas>
+    </div>
+    <div id="legend"></div>
+    <script>
+        /**
+         * Parse a .log file and return an array of { tokens, evalTps } objects.
+         * Skips empty lines and malformed lines (not exactly 5 columns).
+         * @param {File} file - The File object from the file input
+         * @returns {Promise<{ tokens: number, evalTps: number }[]>} Parsed data array (empty array if file is empty)
+         */
+        async function parseLogFile(file) {
+            const text = await file.text();
+            const lines = text.split('\n');
+            const data = [];
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) continue; // skip empty lines
+
+                const parts = trimmed.split('|').map(p => p.trim());
+                if (parts.length !== 5) {
+                    console.warn(`Skipping malformed line (expected 5 columns, got ${parts.length}): ${trimmed}`);
+                    continue;
+                }
+
+                const tokens = Number(parts[1]);
+                const evalTps = Number(parts[3]);
+
+                if (isNaN(tokens) || isNaN(evalTps)) {
+                    console.warn(`Skipping line with non-numeric values: ${trimmed}`);
+                    continue;
+                }
+
+                data.push({ tokens, evalTps });
+            }
+
+            return data;
+        }
+
+        /**
+         * Sort an array of { tokens, evalTps } objects by tokens in ascending order.
+         */
+        function sortData(data) {
+            return [...data].sort((a, b) => a.tokens - b.tokens);
+        }
+
+        // Global chart instance
+        let chart = null;
+
+        /**
+         * Initialize the Chart.js line chart on the canvas.
+         * Creates an empty chart with labeled axes; datasets are added later.
+         */
+        function initChart() {
+            const ctx = document.getElementById('chart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: []
+                },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const point = context.raw;
+                                    return `Tokens: ${point.x}, Eval tps: ${point.y}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Tokens'
+                            },
+                            type: 'linear'
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Eval tps'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Global color palette for datasets
+        const COLORS = ['#3366cc', '#dc3912', '#ff9900', '#109618', '#990099', '#0099c6', '#dd4477', '#66aa00', '#b82e2e', '#316395'];
+
+        // Track uploaded file datasets: [{ label: filename, color: hex, data: [...] }]
+        let fileDatasets = [];
+
+        /**
+         * Handle file upload: parse each .log file, sort data, add dataset to chart.
+         * @param {Event} event - The change event from the file input
+         */
+        async function handleFileUpload(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            for (const file of files) {
+                const parsedData = await parseLogFile(file);
+
+                if (parsedData.length === 0) {
+                    alert(`No valid data in file: ${file.name}`);
+                    continue;
+                }
+
+                const sortedData = sortData(parsedData);
+                const transformedData = sortedData.map(d => ({ x: d.tokens, y: d.evalTps }));
+
+                const color = COLORS[fileDatasets.length % COLORS.length];
+
+                fileDatasets.push({ label: file.name, color, data: transformedData });
+
+                chart.data.datasets.push({
+                    label: file.name,
+                    data: transformedData,
+                    borderColor: color,
+                    backgroundColor: color,
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    tension: 0
+                });
+            }
+
+            chart.update();
+            renderLegend();
+        }
+
+        // Initialize chart on page load
+        initChart();
+
+        /**
+         * Render the legend below the chart showing a color swatch and filename for each dataset.
+         */
+        function renderLegend() {
+            const legendEl = document.getElementById('legend');
+            legendEl.innerHTML = '';
+
+            for (const entry of fileDatasets) {
+                const item = document.createElement('span');
+                item.className = 'legend-item';
+
+                const swatch = document.createElement('span');
+                swatch.className = 'swatch';
+                swatch.style.backgroundColor = entry.color;
+                item.appendChild(swatch);
+
+                const label = document.createElement('span');
+                const maxLen = 40;
+                const displayText = entry.label.length > maxLen ? entry.label.slice(0, 37) + '...' : entry.label;
+                label.textContent = displayText;
+                label.title = entry.label;
+                item.appendChild(label);
+
+                legendEl.appendChild(item);
+            }
+        }
+
+        // Attach file upload handler
+        document.getElementById('file-input').addEventListener('change', handleFileUpload);
+
+        /**
+         * Clear all datasets: remove chart datasets, reset fileDatasets, update chart and legend.
+         */
+        function clearAll() {
+            chart.data.datasets = [];
+            fileDatasets = [];
+            chart.update();
+            renderLegend();
+        }
+
+        // Attach clear all handler
+        document.getElementById('clear-all-btn').addEventListener('click', clearAll);
+    </script>
+</body>
+</html>

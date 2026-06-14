@@ -43,6 +43,37 @@ h1 {
     letter-spacing: -0.02em;
 }
 
+/* ---- Toolbar ---- */
+.toolbar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.toolbar-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 18px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text);
+    text-decoration: none;
+    background: var(--surface);
+    transition: background 0.15s, border-color 0.15s;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.toolbar-link:hover {
+    background: var(--surface-hover);
+    border-color: var(--accent);
+}
+
+
 /* ---- Cards ---- */
 .card {
     background: var(--surface);

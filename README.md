@@ -68,6 +68,7 @@ GF_LLAMA_SERVER_VERSION=server-vulkan
 GF_MODELS_DIRECTORY=/path/to/your/models
 GF_PI_DEV_WORKDIR=/path/to/coder/workdir
 GF_WEB_UI_PORT=8090
+GF_LOG_STATS=0 # set to 1 to enable performance stats logging
 ```
 
 ### 4. Start the daemon
@@ -132,6 +133,8 @@ Open `http://localhost:8090` in your browser. The UI provides:
 - **Preset management** — list, select, and track active presets
 - **Status monitoring** — (almost) real-time server status (RUNNING, LOADING, STOPPED, etc.)
 - **Lock/unlock** — to force keep inference server off when in locked state
+- **Stats Viewer** — Chart.js-based visualization of inference performance metrics (fill TPS, gen TPS, draft acceptance rate)
+
 
 The web UI communicates directly with the shared data directory, so it stays in sync with the daemon and CLI tools.
 
@@ -218,6 +221,31 @@ The proxy runs on port **8070** (container port 8080). It is started automatical
 If you prefer to bypass the proxy entirely, uncomment the `ports` section in `docker/llama_cpp/compose.yml` and point your clients directly at port 8080 (Or create preset with ports section override).
 
 ---
+
+## Performance Statistics
+
+GlacierFlow can log inference performance metrics — fill TPS, gen TPS, draft acceptance rate, and total tokens — to per-preset log files and visualize them in the Web UI.
+
+### Setup
+
+1. **Enable logging** by setting `GF_LOG_STATS=1` in your `.env` file:
+
+```env
+GF_LOG_STATS=1
+```
+
+2. Start the daemon. The daemon will write stats to `data/stats/<YYMMDD>_<preset_name>_<hash>.log` files — one per day per preset.
+
+### Usage
+
+Open the Stats Viewer from the Web UI toolbar link. The viewer loads the log files and renders them as an interactive Chart.js chart. Clear all button resets the chart view.
+
+### Caveats
+
+If preset is using llama's router mode you won't be able to recognize which model was actually called. 
+
+---
+
 
 ## Embedding Server
 
@@ -351,6 +379,8 @@ The automation scripts (`data/pi_dev/scripts/builtin/`) guide the AI through str
 - [x] **webui** - Web-based UI for preset management
 - [x] **embeddings** - llama.cpp embedding server
 - [x] **fifo-proxy** - Go-based FIFO proxy for serializing chat requests
+- [x] **stats-viewer** - Web UI with Chart.js-based performance metrics visualization
+
 - [ ] **agent** - Autonomous agent mode
 
 ---

@@ -1,0 +1,61 @@
+#!/bin/bash
+rootScriptDirectory=$(pwd)
+source "$rootScriptDirectory/gf_common.sh"
+
+fullLog=$(docker logs --timestamps --tail 1000 glacierflow-llamacpp 2>&1)
+
+draftTime=""
+evalTime=""
+fillTime=""
+
+draftStats=""
+evalStats=""
+fillStats=""
+
+evalVolume=""
+fillVolume=""
+
+draftInfo=""
+evalInfo=""
+fillInfo=""
+
+draftInfoLine=$(echo "$fullLog" | grep "draft acceptance" | tail -1)
+if [ ! -z "$draftInfoLine" ]; then
+	draftTime=$(echo "$draftInfoLine" | cut -d " " -f 1 | cut -d "." -f 1 | sed "s/T/ /")
+	if [ ! -z "$draftTime" ]; then
+		draftStats=$(echo "$draftInfoLine" | cut -d "|" -f 3 | cut -d "=" -f 2 | xargs | cut -d " " -f 1)
+	fi
+fi
+
+evalInfoLine=$(echo "$fullLog" | grep "eval time" | tail -1)
+if [ ! -z "$evalInfoLine" ]; then
+	evalTime=$(echo "$evalInfoLine" | cut -d " " -f 1 | cut -d "." -f 1 | sed "s/T/ /")
+	if [ ! -z "$evalTime" ]; then
+		evalStats=$(echo "$evalInfoLine" | cut -d "," -f 2 | xargs | cut -d " " -f 1)
+		evalVolume=$(echo "$evalInfoLine" | cut -d "/" -f 2 | xargs | cut -d " " -f 1)
+	fi
+fi
+
+fillInfoLine=$(echo "$fullLog" | grep "prompt eval time" | tail -1)
+if [ ! -z "$fillInfoLine" ]; then
+	fillTime=$(echo "$fillInfoLine" | cut -d " " -f 1 | cut -d "." -f 1 | sed "s/T/ /")
+	if [ ! -z "$fillTime" ]; then
+		fillStats=$(echo "$fillInfoLine" | cut -d "," -f 2 | xargs | cut -d " " -f 1)
+		fillVolume=$(echo "$fillInfoLine" | cut -d "/" -f 2 | xargs | cut -d " " -f 1)
+	fi
+fi
+
+if [[ $fillTime = $evalTime ]]; then
+	totalVolume=$(($fillVolume + $evalVolume))
+	if [[ $draftTime != $evalTime ]]; then
+		draftStats="0.00"
+	fi
+	if [ -z "$1" ]; then
+		tty_clear
+		echo "        TIME        | TOTAL TOKENS | FILL TPS | GEN TPS | DRAFT ACC RATE"
+		totalVolume=$(add_minimal_padding "$totalVolume" 12 "left")
+		fillStats=$(add_minimal_padding "$fillStats" 8 "left")
+		evalStats=$(add_minimal_padding "$evalStats" 7 "left")
+	fi
+	echo "$evalTime | $totalVolume | $fillStats | $evalStats | $draftStats"
+fi

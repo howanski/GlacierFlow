@@ -14,6 +14,7 @@ data/shared/inference_presets/local/*.yml
 data/shared/inference_status.txt
 data/shared/inference_up_hash.txt
 data/shared/inference_up_timestamp.txt
+data/stats/*.log
 docker/fifo_proxy/main.md5
 docker/fifo_proxy/proxy
 docker/llama_cpp/compose.override.yml

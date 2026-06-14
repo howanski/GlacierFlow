@@ -6,6 +6,10 @@ source "$rootScriptDirectory/gf_common.sh"
 
 GF_DAEMON_MODE_FREQUENCY=10
 GF_INFERENCE_SERVICE="glacierflow-llamacpp"
+GF_STATS_DIR="./../data/stats/"
+GF_LOG_STATS=0 #override in .env
+
+lastPerformanceLogLine=""
 
 if [ -z "$1" ]; then
 	isDaemon=0
@@ -14,6 +18,43 @@ else
 fi
 
 # ── Daemon helpers ────────────────────────────────────────────────────────────
+
+log_inference_statistics() {
+	if [[ $GF_LOG_STATS -eq 1 ]]; then
+		local workingDir=$(pwd)
+		cd $rootScriptDirectory
+		currentStatus=$(cat "$GF_INFERENCE_SERVICE_UP_STATUS")
+		if [[ $currentStatus == 'RUNNING' ]]; then
+			if [ ! -d "$GF_STATS_DIR" ]; then
+				mkdir -p "$GF_STATS_DIR"
+			fi
+			local currentLogLine=$(./glacierflow_inference_log_parse_current "no_header")
+			if [ ! -z "$currentLogLine" ]; then
+				local expectedLogLinePrefix=$(date "+%Y-%m-%d")
+				if [[ $currentLogLine == "$expectedLogLinePrefix"* ]]; then
+					local newLogFound=1
+					local currentName=$(cat "$GF_INFERENCE_PRESET_NAME")
+					currentName=$(echo $currentName"_")
+					local currentHash=$(cat "$GF_INFERENCE_SERVICE_UP_HASH")
+					local logPrefix=$(date "+%y%m%d_")
+					local logFileName=$(echo "$GF_STATS_DIR$logPrefix$currentName$currentHash.log")
+					if [[ $currentLogLine == $lastPerformanceLogLine ]]; then
+						newLogFound=0
+					elif [ -f "$logFileName" ]; then
+						if [[ $currentLogLine == $(tail -1 "$logFileName") ]]; then
+							newLogFound=0
+						fi
+					fi
+					if [[ $newLogFound -eq 1 ]]; then
+						echo "$currentLogLine" >>"$logFileName"
+						lastPerformanceLogLine="$currentLogLine"
+					fi
+				fi
+			fi
+		fi
+		cd $workingDir
+	fi
+}
 
 log_inference_status() {
 	local workingDir=$(pwd)
@@ -139,6 +180,7 @@ run_inference_server() {
 			cat "$GF_INFERENCE_PRESET_NAME_DESIRED" >"$GF_INFERENCE_PRESET_NAME"
 		fi
 	fi
+	log_inference_statistics
 }
 
 # ── Preflight ─────────────────────────────────────────────────────────────────
@@ -153,6 +195,7 @@ run_preflight_checks() {
 	fail_preflight_on_missing_binary grep
 	fail_preflight_on_missing_binary md5sum
 	fail_preflight_on_missing_binary pwd
+	fail_preflight_on_missing_binary tail
 	fail_preflight_on_missing_binary xargs
 	echo "Preflight check DONE"
 }
