@@ -178,6 +178,7 @@ The runner:
 | `c1.json` | SQL | Generate a MySQL query from a schema |
 | `c2.json` | Bash | Write a file-sorting script |
 | `c3.json` | PHP | Optimize a user-processing loop |
+| `l10k.json` | General | Article summarization |
 | `p1.json` | Creative | Write a ~100-word travel description |
 
 
