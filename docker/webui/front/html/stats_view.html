@@ -12,6 +12,7 @@
             padding: 20px;
             background: #f5f5f5;
         }
+
         .controls {
             margin-bottom: 20px;
             display: flex;
@@ -19,6 +20,32 @@
             gap: 10px;
             flex-wrap: wrap;
         }
+
+        .controls .cluster-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .controls .cluster-group label {
+            font-size: 13px;
+        }
+
+        .controls .cluster-group input[type="checkbox"] {
+            width: auto;
+        }
+
+        .controls .cluster-group input[type="number"] {
+            width: 70px;
+            padding: 3px 6px;
+            font-size: 13px;
+        }
+
+        .controls .cluster-group input[type="number"]:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         #clear-all-btn {
             padding: 6px 14px;
             border: none;
@@ -28,13 +55,16 @@
             font-size: 13px;
             cursor: pointer;
         }
+
         #clear-all-btn:hover {
             background: #b02d0e;
         }
+
         .controls label {
             font-weight: 500;
             font-size: 14px;
         }
+
         #chart-container {
             width: 100%;
             max-width: 1200px;
@@ -42,8 +72,9 @@
             background: #fff;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
+
         #legend {
             max-width: 1200px;
             margin: 10px auto 0;
@@ -53,20 +84,22 @@
             padding: 8px 12px;
             background: #fff;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
+
         #legend .legend-item {
             display: inline-flex;
             align-items: center;
             gap: 6px;
             font-size: 13px;
         }
+
         #legend .swatch {
             display: inline-block;
             width: 14px;
             height: 14px;
             border-radius: 3px;
-            border: 1px solid rgba(0,0,0,0.15);
+            border: 1px solid rgba(0, 0, 0, 0.15);
         }
     </style>
 </head>
@@ -75,12 +108,22 @@
         <label for="file-input">Upload .log files:</label>
         <input type="file" id="file-input" multiple accept=".log">
         <button id="clear-all-btn">Clear all</button>
+        <div class="cluster-group">
+            <label for="cluster-toggle">Cluster:</label>
+            <input type="checkbox" id="cluster-toggle">
+            <label for="cluster-range">Range:</label>
+            <input type="number" id="cluster-range" value="500" min="1" disabled>
+        </div>
     </div>
     <div id="chart-container">
         <canvas id="chart"></canvas>
     </div>
     <div id="legend"></div>
     <script>
+        // Clustering settings
+        let clusteringEnabled = false;
+        let clusterRange = 500;
+
         /**
          * Parse a .log file and return an array of { tokens, evalTps } objects.
          * Skips empty lines and malformed lines (not exactly 5 columns).
@@ -175,8 +218,91 @@
         // Global color palette for datasets
         const COLORS = ['#3366cc', '#dc3912', '#ff9900', '#109618', '#990099', '#0099c6', '#dd4477', '#66aa00', '#b82e2e', '#316395'];
 
-        // Track uploaded file datasets: [{ label: filename, color: hex, data: [...] }]
+        // Track uploaded file datasets: [{ label: filename, color: hex, rawData: [...] }]
         let fileDatasets = [];
+
+        /**
+         * Cluster data points by grouping them into buckets based on X-axis (tokens) range.
+         * For each bucket, computes the mean of Y-axis (evalTps) values.
+         * @param {Array<{x: number, y: number}>} data - The data points to cluster
+         * @param {number} range - The X-axis range for each bucket (default: 500)
+         * @returns {Array<{x: number, y: number}>} Clustered data points (one per bucket)
+         */
+        function clusterData(data, range) {
+            if (!clusteringEnabled || range <= 0) return data;
+
+            const buckets = new Map();
+
+            for (const point of data) {
+                const bucketIndex = Math.floor(point.x / range);
+                const bucketStart = bucketIndex * range;
+
+                if (!buckets.has(bucketStart)) {
+                    buckets.set(bucketStart, { sumY: 0, count: 0 });
+                }
+
+                const bucket = buckets.get(bucketStart);
+                bucket.sumY += point.y;
+                bucket.count++;
+            }
+
+            const clustered = [];
+            for (const [bucketStart, stats] of buckets) {
+                const bucketEnd = bucketStart + range;
+                const midX = (bucketStart + bucketEnd) / 2;
+                const meanY = stats.sumY / stats.count;
+                clustered.push({ x: midX, y: meanY });
+            }
+
+            // Sort by X axis
+            clustered.sort((a, b) => a.x - b.x);
+            return clustered;
+        }
+
+        /**
+         * Update the chart with current data, applying clustering if enabled.
+         */
+        function updateChart() {
+            chart.data.datasets = [];
+
+            for (const entry of fileDatasets) {
+                const clusteredData = clusterData(entry.rawData, clusterRange);
+
+                chart.data.datasets.push({
+                    label: entry.label,
+                    data: clusteredData,
+                    borderColor: entry.color,
+                    backgroundColor: entry.color,
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    tension: 0
+                });
+            }
+
+            chart.update();
+            renderLegend();
+        }
+
+        /**
+         * Handle clustering toggle change.
+         */
+        function toggleClustering() {
+            clusteringEnabled = document.getElementById('cluster-toggle').checked;
+            // Enable/disable range input based on clustering toggle
+            const rangeInput = document.getElementById('cluster-range');
+            rangeInput.disabled = !clusteringEnabled;
+            // Re-apply current range value
+            clusterRange = parseInt(rangeInput.value, 10) || 500;
+            updateChart();
+        }
+
+        /**
+         * Handle clustering range change.
+         */
+        function changeClusterRange() {
+            clusterRange = parseInt(document.getElementById('cluster-range').value, 10) || 500;
+            updateChart();
+        }
 
         /**
          * Handle file upload: parse each .log file, sort data, add dataset to chart.
@@ -195,29 +321,15 @@
                 }
 
                 const sortedData = sortData(parsedData);
-                const transformedData = sortedData.map(d => ({ x: d.tokens, y: d.evalTps }));
+                const rawData = sortedData.map(d => ({ x: d.tokens, y: d.evalTps }));
 
                 const color = COLORS[fileDatasets.length % COLORS.length];
 
-                fileDatasets.push({ label: file.name, color, data: transformedData });
-
-                chart.data.datasets.push({
-                    label: file.name,
-                    data: transformedData,
-                    borderColor: color,
-                    backgroundColor: color,
-                    pointRadius: 3,
-                    pointHoverRadius: 6,
-                    tension: 0
-                });
+                fileDatasets.push({ label: file.name, color, rawData });
             }
 
-            chart.update();
-            renderLegend();
+            updateChart();
         }
-
-        // Initialize chart on page load
-        initChart();
 
         /**
          * Render the legend below the chart showing a color swatch and filename for each dataset.
@@ -236,8 +348,7 @@
                 item.appendChild(swatch);
 
                 const label = document.createElement('span');
-                const maxLen = 40;
-                const displayText = entry.label.length > maxLen ? entry.label.slice(0, 37) + '...' : entry.label;
+                const displayText = entry.label;
                 label.textContent = displayText;
                 label.title = entry.label;
                 item.appendChild(label);
@@ -245,9 +356,6 @@
                 legendEl.appendChild(item);
             }
         }
-
-        // Attach file upload handler
-        document.getElementById('file-input').addEventListener('change', handleFileUpload);
 
         /**
          * Clear all datasets: remove chart datasets, reset fileDatasets, update chart and legend.
@@ -258,6 +366,18 @@
             chart.update();
             renderLegend();
         }
+
+        // Initialize chart on page load
+        initChart();
+
+        // Attach file upload handler
+        document.getElementById('file-input').addEventListener('change', handleFileUpload);
+
+        // Attach clustering toggle handler
+        document.getElementById('cluster-toggle').addEventListener('change', toggleClustering);
+
+        // Attach clustering range change handler
+        document.getElementById('cluster-range').addEventListener('change', changeClusterRange);
 
         // Attach clear all handler
         document.getElementById('clear-all-btn').addEventListener('click', clearAll);
