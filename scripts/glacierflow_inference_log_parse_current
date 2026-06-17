@@ -59,7 +59,11 @@ fi
 
 if [[ $fillTime = $evalTime ]]; then
 	if [ -z "$totalVolume" ]; then
-		totalVolume=$(($fillVolume + $evalVolume))
+		if [ ! -z "$fillVolume" ]; then
+			if [ ! -z "$evalVolume" ]; then
+				totalVolume=$(($fillVolume + $evalVolume))
+			fi
+		fi
 	fi
 	if [[ $draftTime != $evalTime ]]; then
 		draftStats="0.00"
@@ -67,6 +71,7 @@ if [[ $fillTime = $evalTime ]]; then
 	if [ -z "$1" ]; then
 		tty_clear
 		echo "        TIME        | TOTAL TOKENS | FILL TPS | GEN TPS | DRAFT ACC RATE"
+		evalTime=$(add_minimal_padding "$evalTime" 19 "left")
 		totalVolume=$(add_minimal_padding "$totalVolume" 12 "left")
 		fillStats=$(add_minimal_padding "$fillStats" 8 "left")
 		evalStats=$(add_minimal_padding "$evalStats" 7 "left")
