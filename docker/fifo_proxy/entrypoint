@@ -11,7 +11,7 @@ if [ -f "$BINARY" ]; then
 		controlSum=$(cat "$SUM_FILE")
 	fi
 	currentControlSum=$(md5sum "main.go")
-	if [[ "$controlSum" != "$currentControlSum" ]]; then
+	if [ "$controlSum" != "$currentControlSum" ]; then
 		echo "$currentControlSum" >"$SUM_FILE"
 		rm -f "$BINARY"
 	fi

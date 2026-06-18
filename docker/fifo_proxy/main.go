@@ -166,9 +166,14 @@ func main() {
 	listenAddr := ":8080"
 	mux := http.NewServeMux()
 
+	// docker health check endpoint
+	mux.HandleFunc("/proxy-health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/v1/chat/") {
-			log.Printf("[FIFO] %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
+			log.Printf("[F.I.F.O.] %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
 			fifo.enqueue(r.Context(), r, w)
 			return
 		}
