@@ -127,6 +127,7 @@ kickoff_menu() {
 		echo "Select action:"
 		echo ""
 		echo "[C] Start Code Review"
+		echo "[B] Find bugs"
 		echo "[I] Propose Improvements"
 		echo "[R] Update Readme"
 		echo ""
@@ -136,6 +137,10 @@ kickoff_menu() {
 		case "$actionToRun" in
 		x | X)
 			break
+			;;
+		b | B)
+			clear
+			run_pi_interactive_with_script "init_bugs"
 			;;
 		c | C)
 			clear

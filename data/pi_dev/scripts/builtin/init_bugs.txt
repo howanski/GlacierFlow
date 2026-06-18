@@ -1,0 +1,4 @@
+What looks like a bug in current project implementation?
+Do not look at usability, missing features, interface etc. - *only bugs*
+Let's focus on 10 or less most important bugs.
+Don't start working yet, I need to take a look at your findings first.
