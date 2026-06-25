@@ -1,0 +1,4 @@
+#!/bin/bash
+cd /home/pi_dev/workdir
+
+tmux new -As pi_dev_task /pi_dev/start

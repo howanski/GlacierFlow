@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -147,11 +148,21 @@ func main() {
 	r.Static("/favicon", "front/files/favicon")
 
 	r.GET("/", func(c *gin.Context) {
+		port := os.Getenv("GF_PI_DEV_TTYD_PORT")
+		if port == "" {
+			port = "7681"
+		}
+		host, _, err := net.SplitHostPort(c.Request.Host)
+		if err != nil {
+			host = c.Request.Host
+		}
+		devHttpdUrl := fmt.Sprintf("http://%s:%s/", host, port)
 		c.HTML(
 			http.StatusOK,
 			"index.html",
 			gin.H{
-				"title": "GlacierFlow",
+				"title":       "GlacierFlow",
+				"devHttpdUrl": devHttpdUrl,
 			},
 		)
 	})

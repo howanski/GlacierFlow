@@ -112,6 +112,20 @@ run_web_ui() {
 	cd "$rootScriptDirectory"
 }
 
+run_pi_dev() {
+	echo "Starting pi.dev..."
+	cd "$rootScriptDirectory"
+	cd "../docker/pi_dev/"
+	if [ -f "../../.env" ]; then
+		set -a
+		source "../../.env"
+		set +a
+	fi
+	docker compose -p "$GF_STACK_NAME" up -d
+	local isRunning="0"
+	cd "$rootScriptDirectory"
+}
+
 run_inference_server() {
 	cd "$rootScriptDirectory"
 	if [ -f "$GF_INFERENCE_SERVICE_LOCK" ]; then
@@ -209,6 +223,7 @@ run_main_service() {
 	fi
 	run_preflight_checks
 	run_web_ui
+	run_pi_dev
 	run_embedding_server
 	run_proxy
 	while true; do

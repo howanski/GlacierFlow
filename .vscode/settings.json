@@ -3,6 +3,7 @@
         "ggml",
         "glacierflow",
         "llamacpp",
-        "multimodel"
+        "multimodel",
+        "TTYD"
     ]
 }

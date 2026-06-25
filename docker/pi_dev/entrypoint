@@ -1,5 +1,12 @@
 #!/bin/bash
 
+#        TODO SSL:
+# -S, --ssl               Enable SSL
+# -C, --ssl-cert          SSL certificate file path
+# -K, --ssl-key           SSL key file path
+
+ttyd -W -m 1 -u 1000 -g 1000 -c $GF_PI_DEV_TTYD_USER:$GF_PI_DEV_TTYD_PASSWORD /pi_dev/start_tmux &
+
 while true; do
 	echo "[HEALTH TICK] $(date)"
 	sleep 60

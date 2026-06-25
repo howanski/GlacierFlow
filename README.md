@@ -63,12 +63,15 @@ cp data/shared/inference_presets/examples/vulkan_8gb_gemma4_e4b_q5.yml \
 Create a `.env` file with your paths:
 
 ```env
+GF_HTTP_PASSWORD=glacierflow
+GF_HTTP_USER=glacierflow
 GF_LLAMA_MEMORY_LIMIT=50g
 GF_LLAMA_SERVER_VERSION=server-vulkan
+GF_LOG_STATS=0 # set to 1 to enable performance stats logging
 GF_MODELS_DIRECTORY=/path/to/your/models
+GF_PI_DEV_TTYD_PORT=7681
 GF_PI_DEV_WORKDIR=/path/to/coder/workdir
 GF_WEB_UI_PORT=8090
-GF_LOG_STATS=0 # set to 1 to enable performance stats logging
 ```
 
 ### 4. Start the daemon
@@ -134,6 +137,7 @@ Open `http://localhost:8090` in your browser. The UI provides:
 - **Status monitoring** — (almost) real-time server status (RUNNING, LOADING, STOPPED, etc.)
 - **Lock/unlock** — to force keep inference server off when in locked state
 - **Stats Viewer** — Chart.js-based visualization of inference performance metrics (fill TPS, gen TPS, draft acceptance rate)
+- **pi.dev httpd** — direct link to the TTYD web terminal for the code generation assistant
 
 
 The web UI communicates directly with the shared data directory, so it stays in sync with the daemon and CLI tools.
@@ -306,7 +310,11 @@ GlacierFlow ships with a Dockerized [pi.dev](https://pi.dev) development environ
 
 ### Usage
 
-Run the management script to start, stop, or attach to the container:
+The pi.dev container starts automatically with the daemon. You can access it in two ways:
+
+**Web Terminal (TTYD):** Open `http://localhost:7681` in your browser (or click "pi.dev httpd" from the Web UI toolbar). Log in with the credentials set via `GF_HTTP_USER` / `GF_HTTP_PASSWORD` (defaults: `glacierflow` / `glacierflow`). The terminal launches inside a persistent tmux session.
+
+**Management script:** For start/stop/attach control:
 
 ```bash
 cd scripts
@@ -354,12 +362,15 @@ The automation scripts (`data/pi_dev/scripts/builtin/`) guide the AI through str
 
 ### Container Details
 
-- **Image**: Alpine-based with bash, git, npm, vim, rust, cargo, php, go, openjdk17, gradle, android-tools, and composer
+- **Image**: Alpine-based with bash, git, npm, vim, rust, cargo, php, go, openjdk17, gradle, android-tools, composer, ttyd, and tmux
 - **User**: Runs as non-root (`pi_dev`, UID 1000)
+- **TTYD**: Web terminal server on port 7681 with basic auth (configurable via `GF_PI_DEV_TTYD_USER` / `GF_PI_DEV_TTYD_PASSWORD`)
+- **tmux**: Persistent session (`pi_dev_task`) with custom config mounted from `data/pi_dev/tmux.conf`
 - **Volume mounts**:
   - Project root → `/pi_dev` (read-only)
   - Config → `~/.pi` (read-write)
   - Scripts → `/pi_dev_scripts` (read-write, for builtin automation scripts)
+  - tmux config → `~/.tmux.conf` (read-only)
   - Workdir → configurable via `GF_PI_DEV_WORKDIR` env var (read-write)
 
 ---

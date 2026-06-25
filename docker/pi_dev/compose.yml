@@ -6,11 +6,16 @@ services:
     container_name: "glacierflow-pi-dev"
     environment:
       - EDITOR=vim
+      - GF_PI_DEV_TTYD_USER=${GF_HTTP_USER:-glacierflow}
+      - GF_PI_DEV_TTYD_PASSWORD=${GF_HTTP_PASSWORD:-glacierflow}
     user: "1000:1000"
+    ports:
+      - "${GF_PI_DEV_TTYD_PORT:-7681}:7681"
     volumes:
       - ./:/pi_dev:ro
       - ./../../data/pi_dev/config:/home/pi_dev/.pi:rw
       - ./../../data/pi_dev/scripts:/pi_dev_scripts:rw
+      - ./../../data/pi_dev/tmux.conf:/home/pi_dev/.tmux.conf:ro
       - ${GF_PI_DEV_WORKDIR:-./../../data/pi_dev/workdir}:/home/pi_dev/workdir:rw
     restart: no
     logging:
