@@ -122,7 +122,24 @@ run_pi_dev() {
 		set +a
 	fi
 	docker compose -p "$GF_STACK_NAME" up -d
-	local isRunning="0"
+	cd "$rootScriptDirectory"
+}
+
+run_caddy() {
+	echo "Starting caddy..."
+	cd "$rootScriptDirectory"
+
+	if [ ! -f "../data/ssl_certs/cert.pem" ]; then
+		openssl req -x509 -newkey rsa:4096 -keyout "../data/ssl_certs/key.pem" -out "../data/ssl_certs/cert.pem" -subj "/C=CN/ST=GD/L=SZ/O=Acme, Inc./CN=Acme Root CA" -days 3650 -nodes
+	fi
+
+	cd "../docker/caddy/"
+	if [ -f "../../.env" ]; then
+		set -a
+		source "../../.env"
+		set +a
+	fi
+	docker compose -p "$GF_STACK_NAME" up -d
 	cd "$rootScriptDirectory"
 }
 
@@ -208,6 +225,7 @@ run_preflight_checks() {
 	fail_preflight_on_missing_binary docker
 	fail_preflight_on_missing_binary grep
 	fail_preflight_on_missing_binary md5sum
+	fail_preflight_on_missing_binary openssl
 	fail_preflight_on_missing_binary pwd
 	fail_preflight_on_missing_binary tail
 	fail_preflight_on_missing_binary xargs
@@ -224,6 +242,7 @@ run_main_service() {
 	run_preflight_checks
 	run_web_ui
 	run_pi_dev
+	run_caddy
 	run_embedding_server
 	run_proxy
 	while true; do

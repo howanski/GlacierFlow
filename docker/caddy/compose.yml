@@ -1,0 +1,21 @@
+services:
+  glacierflow-caddy:
+    container_name: "glacierflow-caddy"
+    image: caddy:2.11.2
+    entrypoint: ["/entrypoint.sh"]
+    environment:
+      - GF_HTTP_USER=${GF_HTTP_USER:-glacierflow}
+      - GF_HTTP_PASSWORD=${GF_HTTP_PASSWORD:-glacierflow}
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+    ports:
+      - "${GF_WEB_UI_PORT:-8090}:1234"
+      - "${GF_PI_DEV_TTYD_PORT:-7681}:1235"
+    restart: "no"
+    volumes:
+      - ./entrypoint.sh:/entrypoint.sh:ro
+      - ./conf/:/etc/caddy/:ro
+      - ./../../data/ssl_certs/:/ssl_certs:ro

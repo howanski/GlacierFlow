@@ -156,7 +156,13 @@ func main() {
 		if err != nil {
 			host = c.Request.Host
 		}
-		devHttpdUrl := fmt.Sprintf("http://%s:%s/", host, port)
+		scheme := "http"
+		if proto := c.GetHeader("X-Forwarded-Proto"); proto == "https" {
+			scheme = "https"
+		} else if c.Request.TLS != nil {
+			scheme = "https"
+		}
+		devHttpdUrl := fmt.Sprintf("%s://%s:%s/", scheme, host, port)
 		c.HTML(
 			http.StatusOK,
 			"index.html",

@@ -28,6 +28,7 @@ GlacierFlow runs llama.cpp inside Docker and lets you switch between model prese
 - Web-based UI for preset management and status monitoring
 - Embedding server (llama.cpp) for vector embeddings, toggleable via override config
 - FIFO proxy for serializing chat requests (prevents stream cut-offs during model hot-swap)
+- Caddy reverse proxy with SSL/TLS termination and basic auth for Web UI and pi.dev TTYD
 
 ---
 
@@ -36,7 +37,7 @@ GlacierFlow runs llama.cpp inside Docker and lets you switch between model prese
 - Linux (tested on Arch/Manjaro)
 - Docker & Docker Compose
 - GPU drivers (Vulkan for AMD/NVIDIA)
-- Bash, curl, grep, awk, md5sum, and other coreutils
+- Bash, curl, grep, awk, md5sum, openssl, and other coreutils
 
 ---
 
@@ -56,6 +57,13 @@ Pick an example preset and copy it to your local presets directory:
 ```bash
 cp data/shared/inference_presets/examples/vulkan_8gb_gemma4_e4b_q5.yml \
    data/shared/inference_presets/local/
+```
+
+By default a self-signed certificate is auto-generated on first run. To use your own certificates, place `cert.pem` and `key.pem` in `data/ssl_certs/` before starting the daemon.
+
+```bash
+# Generate self-signed cert manually (daemon does this automatically if files are missing)
+openssl req -x509 -newkey rsa:4096 -keyout data/ssl_certs/key.pem -out data/ssl_certs/cert.pem -days 3650 -nodes
 ```
 
 ### 3. Configure environment
@@ -131,7 +139,7 @@ cd scripts
 ./glacierflow_host_daemon
 ```
 
-Open `http://localhost:8090` in your browser. The UI provides:
+Open `https://localhost:8090` in your browser. The UI provides:
 
 - **Preset management** — list, select, and track active presets
 - **Status monitoring** — (almost) real-time server status (RUNNING, LOADING, STOPPED, etc.)
@@ -312,7 +320,7 @@ GlacierFlow ships with a Dockerized [pi.dev](https://pi.dev) development environ
 
 The pi.dev container starts automatically with the daemon. You can access it in two ways:
 
-**Web Terminal (TTYD):** Open `http://localhost:7681` in your browser (or click "pi.dev httpd" from the Web UI toolbar). Log in with the credentials set via `GF_HTTP_USER` / `GF_HTTP_PASSWORD` (defaults: `glacierflow` / `glacierflow`). The terminal launches inside a persistent tmux session.
+**Web Terminal (TTYD):** Open `https://localhost:7681` in your browser (or click "pi.dev httpd" from the Web UI toolbar). Log in with the credentials set via `GF_HTTP_USER` / `GF_HTTP_PASSWORD` (defaults: `glacierflow` / `glacierflow`). The terminal launches inside a persistent tmux session. Note: if using the default self-signed certificate, you'll need to accept the browser's security warning.
 
 **Management script:** For start/stop/attach control:
 
@@ -391,6 +399,7 @@ The automation scripts (`data/pi_dev/scripts/builtin/`) guide the AI through str
 - [x] **embeddings** - llama.cpp embedding server
 - [x] **fifo-proxy** - Go-based FIFO proxy for serializing chat requests
 - [x] **stats-viewer** - Web UI with Chart.js-based performance metrics visualization
+- [x] **caddy-proxy** - Caddy reverse proxy with SSL/TLS termination and basic auth
 
 - [ ] **agent** - Autonomous agent mode
 

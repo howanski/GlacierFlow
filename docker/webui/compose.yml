@@ -7,8 +7,6 @@ services:
     environment:
       - GIN_MODE=release
       - GF_PI_DEV_TTYD_PORT=${GF_PI_DEV_TTYD_PORT:-7681}
-    ports:
-      - "${GF_WEB_UI_PORT:-8090}:8080"
     volumes:
       - ./:/app
       - ./../../data/shared:/app/shared:rw
