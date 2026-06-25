@@ -12,7 +12,12 @@ services:
     volumes:
       - ${GF_MODELS_DIRECTORY:-./../../data/models}:/models:ro
     command: >
-      --drop 'compose.override.yml' into this directory
+      --host 0.0.0.0
+      --parallel 1
+      --port 8080
+      --threads 6
+      --threads-http 1
+      --ui
     restart: no
     deploy:
       resources:
