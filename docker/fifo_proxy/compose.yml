@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: "glacierflow-proxy"
     ports:
-      - "8070:8080"
+      - "${GF_INFERENCE_PORT_HTTP:-8070}:8080"
     volumes:
       - ./:/app
     restart: no

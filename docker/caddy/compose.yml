@@ -14,6 +14,7 @@ services:
     ports:
       - "${GF_WEB_UI_PORT:-8090}:1234"
       - "${GF_PI_DEV_TTYD_PORT:-7681}:1235"
+      - "${GF_INFERENCE_PORT_HTTPS:-8050}:1236"
     restart: "no"
     volumes:
       - ./entrypoint.sh:/entrypoint.sh:ro
