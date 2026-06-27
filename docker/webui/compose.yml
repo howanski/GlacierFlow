@@ -7,6 +7,8 @@ services:
     environment:
       - GIN_MODE=release
       - GF_PI_DEV_TTYD_PORT=${GF_PI_DEV_TTYD_PORT:-7681}
+      - GF_HERMES_TTYD_PORT=${GF_HERMES_TTYD_PORT:-7682}
+      - GF_HERMES_WEB_PORT=${GF_HERMES_WEB_PORT:-7683}
     volumes:
       - ./:/app
       - ./../../data/shared:/app/shared:rw

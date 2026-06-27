@@ -16,3 +16,13 @@
 	tls /ssl_certs/cert.pem /ssl_certs/key.pem
 	reverse_proxy glacierflow-proxy:8080
 }
+
+:1237 {
+	tls /ssl_certs/cert.pem /ssl_certs/key.pem
+	reverse_proxy glacierflow-hermes:7681
+}
+
+:1238 {
+	tls /ssl_certs/cert.pem /ssl_certs/key.pem
+	reverse_proxy glacierflow-hermes:9119
+}

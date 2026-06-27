@@ -152,6 +152,17 @@ func main() {
 		if port == "" {
 			port = "7681"
 		}
+
+		portHermes := os.Getenv("GF_HERMES_TTYD_PORT")
+		if portHermes == "" {
+			portHermes = "7682"
+		}
+
+		portHermesWeb := os.Getenv("GF_HERMES_WEB_PORT")
+		if portHermesWeb == "" {
+			portHermesWeb = "7683"
+		}
+
 		host, _, err := net.SplitHostPort(c.Request.Host)
 		if err != nil {
 			host = c.Request.Host
@@ -163,12 +174,18 @@ func main() {
 			scheme = "https"
 		}
 		devHttpdUrl := fmt.Sprintf("%s://%s:%s/", scheme, host, port)
+
+		hermesHttpdUrl := fmt.Sprintf("%s://%s:%s/", scheme, host, portHermes)
+
+		hermesWebUrl := fmt.Sprintf("%s://%s:%s/", scheme, host, portHermesWeb)
 		c.HTML(
 			http.StatusOK,
 			"index.html",
 			gin.H{
-				"title":       "GlacierFlow",
-				"devHttpdUrl": devHttpdUrl,
+				"title":          "GlacierFlow",
+				"devHttpdUrl":    devHttpdUrl,
+				"hermesHttpdUrl": hermesHttpdUrl,
+				"hermesWebUrl":   hermesWebUrl,
 			},
 		)
 	})

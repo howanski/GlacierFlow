@@ -1,0 +1,6 @@
+#!/bin/bash
+export PATH="/home/ubuntu/.local/bin:$PATH"
+
+cd /home/ubuntu
+
+tmux new -As hermes_task /init-data/start

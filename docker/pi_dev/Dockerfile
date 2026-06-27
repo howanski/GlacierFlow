@@ -1,4 +1,3 @@
-# OpenCode Docker Image
 FROM alpine:3.22.4
 
 RUN adduser -D -u 1000 pi_dev

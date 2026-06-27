@@ -1,0 +1,15 @@
+#!/bin/bash
+export PATH="/home/ubuntu/.local/bin:$PATH"
+
+cd /home/ubuntu/workdir
+
+ttyd -W -m 1 -u 1000 -g 1000 -c "$GF_HERMES_TTYD_USER:$GF_HERMES_TTYD_PASSWORD" /init-data/start_tmux &
+
+hermes dashboard --host 0.0.0.0 --port 9119 &
+
+hermes gateway run &
+
+while true; do
+	echo "[HEALTH TICK] $(date)"
+	sleep 60
+done

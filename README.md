@@ -24,11 +24,12 @@ GlacierFlow runs llama.cpp inside Docker and lets you switch between model prese
 - Preset loading time tracking & status monitoring
 - Example configs for various GPU setups
 - Docker-based code generation assistant (pi.dev) with automation workflows
+- Hermes AI agent container with web dashboard and kanban task support
 - Multi-model benchmarking suite
 - Web-based UI for preset management and status monitoring
 - Embedding server (llama.cpp) for vector embeddings, toggleable via override config
 - FIFO proxy for serializing chat requests (prevents stream cut-offs during model hot-swap)
-- Caddy reverse proxy with SSL/TLS termination and basic auth for Web UI and pi.dev TTYD
+- Caddy reverse proxy with SSL/TLS termination and basic auth for Web UI, pi.dev TTYD and Hermes
 
 ---
 
@@ -71,6 +72,10 @@ openssl req -x509 -newkey rsa:4096 -keyout data/ssl_certs/key.pem -out data/ssl_
 Create a `.env` file with your paths:
 
 ```env
+GF_HERMES_AUTOSTART=0 # set to 1 to auto-start Hermes container with the daemon
+GF_HERMES_TTYD_PORT=7682
+GF_HERMES_WEB_PORT=7683
+GF_HERMES_WORKDIR=/path/to/hermes/workdir
 GF_HTTP_PASSWORD=glacierflow
 GF_HTTP_USER=glacierflow
 GF_LLAMA_MEMORY_LIMIT=50g
@@ -146,6 +151,8 @@ Open `https://localhost:8090` in your browser. The UI provides:
 - **Lock/unlock** — to force keep inference server off when in locked state
 - **Stats Viewer** — Chart.js-based visualization of inference performance metrics (fill TPS, gen TPS, draft acceptance rate)
 - **pi.dev httpd** — direct link to the TTYD web terminal for the code generation assistant
+- **hermes httpd** — direct link to the TTYD web terminal for the Hermes agent
+- **hermes Web UI** — direct link to the Hermes dashboard
 
 
 The web UI communicates directly with the shared data directory, so it stays in sync with the daemon and CLI tools.
@@ -383,6 +390,53 @@ The automation scripts (`data/pi_dev/scripts/builtin/`) guide the AI through str
 
 ---
 
+## Hermes: AI Agent Container
+
+GlacierFlow ships with a Dockerized Hermes agent environment for AI-driven task management, research, and kanban workflows. It runs inside an Ubuntu-based container with Hermes CLI, web dashboard, and gateway pre-installed.
+
+### Setup
+
+1. **Auto-start with daemon** — set `GF_HERMES_AUTOSTART=1` in your `.env` file to start the Hermes container automatically when the daemon launches:
+
+```env
+GF_HERMES_AUTOSTART=1
+```
+
+2. **Manual start** — use the management script:
+
+```bash
+cd scripts
+./glacierflow_hermes
+```
+
+### Usage
+
+The Hermes container provides multiple access points:
+
+**Web Terminal (TTYD):** Open `https://localhost:7682` in your browser (or click "hermes httpd" from the Web UI toolbar). Log in with the credentials set via `GF_HTTP_USER` / `GF_HTTP_PASSWORD`.
+
+**Hermes Dashboard:** Open `https://localhost:7683` in your browser (or click "hermes Web UI" from the Web UI toolbar) for the web-based Hermes dashboard.
+
+### Configuring Hermes for Local Inference
+
+To use your local llama.cpp inference server with Hermes:
+
+1. Attach to the container or use the TTYD terminal
+2. Run the configuration menu (`C` key) or `hermes setup`
+3. Use `http://glacierflow-proxy:8080/v1` as the custom endpoint URL to route through the FIFO proxy
+
+### Container Details
+
+- **Image**: Ubuntu-based with bash, curl, ttyd, tmux, git, vim, python3, nodejs, npm, ripgrep, ffmpeg
+- **User**: Runs as non-root (`ubuntu`, UID 1000)
+- **TTYD**: Web terminal server on port 7682 with basic auth
+- **Dashboard**: Web UI on port 7683
+- **tmux**: Persistent session (`hermes_task`)
+- **Volume mounts**:
+  - Hermes data → `data/hermes/` (read-write, configurable via `GF_HERMES_WORKDIR`)
+
+---
+
 ## Remotes
 
 - [GitHub](https://github.com/howanski/GlacierFlow)
@@ -395,13 +449,12 @@ The automation scripts (`data/pi_dev/scripts/builtin/`) guide the AI through str
 
 - [x] **coder** - Code generation assistant integration
 - [x] **coder automation** - Interactive menu, SKETCH→TODO pipeline, auto-programmer, auto-critic
+- [x] **hermes** - Hermes AI agent container with dashboard and kanban support
 - [x] **webui** - Web-based UI for preset management
 - [x] **embeddings** - llama.cpp embedding server
 - [x] **fifo-proxy** - Go-based FIFO proxy for serializing chat requests
 - [x] **stats-viewer** - Web UI with Chart.js-based performance metrics visualization
 - [x] **caddy-proxy** - Caddy reverse proxy with SSL/TLS termination and basic auth
-
-- [ ] **agent** - Autonomous agent mode
 
 ---
 

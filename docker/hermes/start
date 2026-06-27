@@ -1,0 +1,101 @@
+#!/bin/bash
+export PATH="/home/ubuntu/.local/bin:$PATH"
+
+cd /home/ubuntu/workdir
+
+run_bash() {
+	bash
+}
+
+run_hermes() {
+	hermes
+}
+
+hermes_add_kanban_task() {
+	local pathSuffix=$(date +%Y_%m_%d_%H_%M_%S)
+	local workPath="/home/ubuntu/workdir/$pathSuffix"
+	mkdir -p "$workPath"
+	hermes kanban create "$pathSuffix" --workspace dir:$workPath
+	echo ""
+	echo "Workaround for disappearing research data:"
+	echo "(useful at the moment of writing)"
+	echo ""
+	echo "use Web UI to manage, disable Auto-decompose to keep research data (known issue with ephemeral kanban tasks)"
+	echo "move task to Triage and prepare normally"
+	sleep 5
+}
+
+run_conf() {
+	hermes setup
+}
+
+run_hermes_web() {
+	hermes dashboard --host 0.0.0.0 --port 9119
+}
+
+run_main() {
+	local actionToRun
+	while true; do
+		clear
+		echo ""
+		echo "You're in a hermes box!"
+		echo ""
+		echo "Select action:"
+		if [ -f "/home/ubuntu/.local/bin/hermes" ]; then
+			echo "[R] Run hermes"
+			echo "[K] Add persisted kanban task"
+			echo "    (Workaround for disappearing research data)"
+			echo ""
+			echo "[W] Host hermes Web UI"
+			echo "    (Needed once to configure authentication)"
+			echo ""
+			echo "[C] Configure hermes"
+			echo "    (use http://glacierflow-proxy:8080/v1 as 'Custom endpoint')"
+			echo "    to use local inference server"
+		else
+			echo "[I] Install hermes"
+		fi
+		echo ""
+		echo "[B] Bash"
+		echo ""
+		echo "[X] exit / detach from container"
+		echo ""
+		read -p "Selected action: " actionToRun
+		case "$actionToRun" in
+		x | X)
+			echo "👋 Bye!"
+			exit 0
+			;;
+		i | I)
+			clear
+			curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+			sleep 10
+			;;
+		r | R)
+			clear
+			run_hermes
+			;;
+		c | C)
+			clear
+			run_conf
+			;;
+		k | K)
+			clear
+			hermes_add_kanban_task
+			;;
+		w | W)
+			clear
+			run_hermes_web
+			;;
+		b | B)
+			clear
+			run_bash
+			;;
+		*)
+			echo ""
+			;;
+		esac
+	done
+}
+
+run_main

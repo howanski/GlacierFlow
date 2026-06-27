@@ -1,0 +1,26 @@
+services:
+  glacierflow-hermes:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    container_name: "glacierflow-hermes"
+    environment:
+      - EDITOR=vim
+      - GF_HERMES_TTYD_USER=${GF_HTTP_USER:-glacierflow}
+      - GF_HERMES_TTYD_PASSWORD=${GF_HTTP_PASSWORD:-glacierflow}
+    user: "1000:1000"
+    volumes:
+      - ./:/init-data:ro
+      - ${GF_HERMES_WORKDIR:-./../../data/hermes}:/home/ubuntu/workdir:rw
+    restart: no
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9119/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"

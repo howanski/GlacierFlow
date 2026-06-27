@@ -7,7 +7,8 @@ source "$rootScriptDirectory/gf_common.sh"
 GF_DAEMON_MODE_FREQUENCY=10
 GF_INFERENCE_SERVICE="glacierflow-llamacpp"
 GF_STATS_DIR="./../data/stats/"
-GF_LOG_STATS=0 #override in .env
+GF_LOG_STATS=0        #override in .env
+GF_HERMES_AUTOSTART=0 #override in .env
 
 lastPerformanceLogLine=""
 
@@ -96,6 +97,22 @@ run_proxy() {
 		set +a
 	fi
 	docker compose -p "$GF_STACK_NAME" up -d
+	cd "$rootScriptDirectory"
+}
+
+run_hermes() {
+	echo "Starting hermes..."
+	cd "$rootScriptDirectory"
+	mkdir -p "../data/hermes"
+	cd "../docker/hermes/"
+	if [ -f "../../.env" ]; then
+		set -a
+		source "../../.env"
+		set +a
+	fi
+	if [[ $GF_HERMES_AUTOSTART -eq 1 ]]; then
+		docker compose -p "$GF_STACK_NAME" up -d
+	fi
 	cd "$rootScriptDirectory"
 }
 
@@ -245,6 +262,7 @@ run_main_service() {
 	run_caddy
 	run_embedding_server
 	run_proxy
+	run_hermes
 	while true; do
 		run_inference_server
 
