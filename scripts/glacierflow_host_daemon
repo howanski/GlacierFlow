@@ -5,7 +5,6 @@ source "$rootScriptDirectory/gf_common.sh"
 # ── Script-specific constants ─────────────────────────────────────────────────
 
 GF_DAEMON_MODE_FREQUENCY=10
-GF_INFERENCE_SERVICE="glacierflow-llamacpp"
 GF_STATS_DIR="./../data/stats/"
 GF_LOG_STATS=0        #override in .env
 GF_HERMES_AUTOSTART=0 #override in .env

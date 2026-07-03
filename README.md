@@ -26,6 +26,7 @@ GlacierFlow runs llama.cpp inside Docker and lets you switch between model prese
 - Docker-based code generation assistant (pi.dev) with automation workflows
 - Hermes AI agent container with web dashboard and kanban task support
 - Multi-model benchmarking suite
+- GPU layers autotune — binary search for optimal VRAM offload with stability testing and quick benchmark
 - Web-based UI for preset management and status monitoring
 - Embedding server (llama.cpp) for vector embeddings, toggleable via override config
 - FIFO proxy for serializing chat requests (prevents stream cut-offs during model hot-swap)
@@ -202,6 +203,29 @@ The runner:
 | `c3.json` | PHP | Optimize a user-processing loop |
 | `l10k.json` | General | Article summarization |
 | `p1.json` | Creative | Write a ~100-word travel description |
+
+---
+
+## GPU Layers Autotune
+
+GlacierFlow includes a GPU layers autotune script that finds the optimal number of layers to offload to the GPU. It uses binary search to locate the highest layer count that still passes a context stability test, then optionally runs a quick benchmark across all layers.
+
+```bash
+cd scripts
+./glacierflow_autotune_gpu_layers
+```
+### How It Works
+
+- **Stability test** — runs `llama-benchy` (via `uvx`) with a given context size (`--pp`) and checks whether the inference server can process the prompt without OOM or errors
+- **Binary search** — starts from the current `--gpu-layers` value and searches up or down to find the flip point (highest passing layer)
+- **Quick benchmark** — sends 3 requests using the `c1.json` preset and averages the predicted TPS, stepping down one layer at a time
+
+The script modifies `--gpu-layers` in the compose source file and restarts the inference server between each test. It requires the daemon to be running so it can manage the server lifecycle.
+
+### Caveats
+
+- The autotune script works on currently loaded preset and does not support llama's router mode
+- The preset file must contain a `--gpu-layers` argument in one line for the script to work
 
 
 ---
@@ -461,4 +485,4 @@ To use your local llama.cpp inference server with Hermes:
 ## License
 
 GlacierFlow itself is a collection of custom scripts — no license applies.
-Third-party software (llama.cpp, Docker, pi.dev etc.) is subject to their respective licenses.
+Third-party software (llama.cpp, Docker, pi.dev, llama-benchy etc.) is subject to their respective licenses.

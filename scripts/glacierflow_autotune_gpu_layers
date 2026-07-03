@@ -1,0 +1,377 @@
+#!/bin/bash
+
+source "$(dirname "$0")/gf_common.sh"
+
+GF_MIN_LAYERS=0
+GF_MAX_LAYERS=90
+LAST_BENCH_TIME=0
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+exit_no_layer_marker() {
+	echo "Cannot find '--gpu-layers' line in current config"
+	exit 1
+}
+
+has_gpu_layers_marker() {
+	grep -c -e "--gpu-layers" "$GF_INFERENCE_COMPOSE_FILE_SOURCE" 2>/dev/null || echo 0
+}
+
+get_layers_amount() {
+	grep -e "--gpu-layers" "$GF_INFERENCE_COMPOSE_FILE_TARGET" | xargs | cut -d " " -f 2
+}
+
+is_server_running() {
+	local status
+	status=$(cat "$GF_INFERENCE_SERVICE_UP_STATUS")
+	[[ "$status" == "RUNNING" ]] && echo "1" || echo "0"
+}
+
+get_finish_time_prediction() {
+	if [ -z "$LAST_BENCH_TIME" ] || [ "$LAST_BENCH_TIME" -eq 0 ]; then
+		echo "???"
+	else
+		date -d "+${LAST_BENCH_TIME} seconds" +%H:%M:%S
+	fi
+}
+
+get_prompt_processing_max_tokens_processed() {
+	local fullLog=$(docker logs --timestamps --tail 10000 "$GF_INFERENCE_SERVICE" 2>&1)
+	local logData=$(echo "$fullLog" | grep "prompt processing" | tail -1)
+	if [ ! -z "$logData" ]; then
+		logData=$(echo "$logData" | xargs | cut -d "," -f 2 | cut -d "=" -f 2 | xargs)
+		if [ ! -z "$logData" ]; then
+			echo "$logData"
+		else
+			echo "???"
+		fi
+		return
+	fi
+	echo "???"
+}
+
+set_layers_amount() {
+	local layersToSet=$1
+
+	if [ "$(has_gpu_layers_marker)" -ne 1 ]; then
+		exit_no_layer_marker
+	fi
+
+	local currentLayers
+	currentLayers=$(get_layers_amount)
+
+	if [ "$layersToSet" -ne "$currentLayers" ]; then
+		echo "Changing layers offloaded to GPU from $currentLayers to $layersToSet"
+
+		sed -i "s/--gpu-layers ${currentLayers}\b/--gpu-layers ${layersToSet}/g" \
+			"$GF_INFERENCE_COMPOSE_FILE_SOURCE"
+
+		# stopping docker server
+		# daemon will sync source/target file states, bring up docker and test api before setting 'RUNNING' state
+		docker stop "$GF_INFERENCE_SERVICE" 2>/dev/null 1>/dev/null
+		echo "BENCH" >"$GF_INFERENCE_SERVICE_UP_STATUS"
+
+		local startupTimeout=600
+		local elapsed=0
+		while [ "$(is_server_running)" -ne 1 ] && [ "$elapsed" -lt "$startupTimeout" ]; do
+			echo -n "."
+			sleep 1
+			elapsed=$((elapsed + 1))
+		done
+		echo
+		if [ "$elapsed" -ge "$startupTimeout" ]; then
+			echo "Error: Server failed to start within ${startupTimeout}s. Aborting."
+			exit 1
+		fi
+		echo
+	fi
+}
+
+# ── Benchmark ─────────────────────────────────────────────────────────────────
+
+run_context_stability_test() {
+	local layers=$1
+
+	local benchResult
+	benchResult=$(mktemp /tmp/benchy_XXXXXX.json)
+
+	echo "[$(date +%H:%M:%S) ~> $(get_finish_time_prediction)] Stability testing..."
+	SECONDS=0
+	uvx llama-benchy \
+		--base-url "$GF_INFERENCE_URL/" \
+		--model current-preset \
+		--pp "$ppSize" \
+		--latency-mode generation \
+		--save-result "$benchResult" \
+		--format json \
+		--tg 100 \
+		--runs 1 \
+		--no-warmup \
+		--exit-on-first-fail \
+		--skip-coherence \
+		1>/dev/null 2>/dev/null
+
+	LAST_BENCH_TIME=$SECONDS
+	if [ $? -ne 0 ] || [ ! -f "$benchResult" ]; then
+		rm -f "$benchResult"
+		echo "FAILED @ $layers layers @ $(get_prompt_processing_max_tokens_processed) ctx in $LAST_BENCH_TIME seconds"
+		return 1
+	fi
+
+	speedAchieved=$(jq -r '.benchmarks[0].tg_throughput.mean' "$benchResult")
+	rm -f "$benchResult"
+
+	if [[ "$speedAchieved" == "null" ]]; then
+		echo "FAILED @ $layers layers @ $(get_prompt_processing_max_tokens_processed) ctx in $LAST_BENCH_TIME seconds"
+		return 1
+	fi
+
+	echo "-------> $speedAchieved @ $layers layers in $LAST_BENCH_TIME seconds"
+	return 0
+}
+
+# Quick benchmark: uses curl with c1.json preset, 3 passes, average TPS.
+# Returns 0 on success, 1 on failure. Sets speedAchieved.
+run_quick_benchmark() {
+	local layers=$1
+
+	local sum=0
+	local hasErrors=0
+	local predictionTps=0
+	echo -n "[$(date +%H:%M:%S) ~> $(get_finish_time_prediction)] Performance testing"
+	SECONDS=0
+
+	for i in {1..3}; do
+		echo -n "."
+		jsonResponse=$(
+			curl "$GF_INFERENCE_URL/v1/chat/completions" \
+				-H "Content-Type: application/json" \
+				-d @"${GF_BENCHMARK_PRESETS_DIR}c1.json" -s
+		)
+		LAST_BENCH_TIME=$SECONDS
+		if [ $? -ne 0 ]; then
+			echo
+			echo "FAILED @ $layers layers @ $(get_prompt_processing_max_tokens_processed) ctx in $LAST_BENCH_TIME seconds"
+			return 1
+		else
+			predictionTps=$(echo "$jsonResponse" | jq '.timings.predicted_per_second' | xargs)
+			if [[ -z "$predictionTps" || "$predictionTps" == "null" ]]; then
+				echo
+				echo "FAILED @ $layers layers @ $(get_prompt_processing_max_tokens_processed) ctx in $LAST_BENCH_TIME seconds"
+				return 1
+			fi
+			sum=$(echo "$sum + $predictionTps" | bc -l)
+		fi
+	done
+	echo
+
+	speedAchieved=$(echo "$sum/3" | bc -l)
+
+	echo "-------> $speedAchieved @ $layers layers in $LAST_BENCH_TIME seconds"
+	return 0
+}
+
+# ── Main logic ────────────────────────────────────────────────────────────────
+
+do_autotune() {
+
+	if [ "$(has_gpu_layers_marker)" -ne 1 ]; then
+		exit_no_layer_marker
+	fi
+
+	read -p "Context size to use: " ppSize
+	if ! [[ "$ppSize" =~ ^[1-9][0-9]*$ ]]; then
+		echo "Error: context size must be a positive integer"
+		exit 1
+	fi
+
+	read -p "Max layers to test [90]: " maxLayersInput
+	if [[ -z "$maxLayersInput" ]]; then
+		GF_MAX_LAYERS=90
+	elif ! [[ "$maxLayersInput" =~ ^[1-9][0-9]*$ ]]; then
+		echo "Error: max layers must be a positive integer"
+		exit 1
+	else
+		GF_MAX_LAYERS=$maxLayersInput
+	fi
+
+	layersOnGpu=$(get_layers_amount)
+	echo "Current layers: $layersOnGpu"
+
+	# --- First run: determine initial direction ---
+
+	if run_context_stability_test "$layersOnGpu"; then
+		echo "Test positive, going up..."
+		optimizationDirection="UP"
+	else
+		echo "Test negative, going down..."
+		optimizationDirection="DOWN"
+	fi
+
+	# --- Binary search: find the highest passing layer ---
+
+	# Invariant: low = known passing, high = known failing
+	# We search for the flip point where they become adjacent.
+
+	if [[ "$optimizationDirection" == "UP" ]]; then
+		# Current layers pass → search [current .. GF_MAX_LAYERS] for highest passing
+		low=$layersOnGpu
+		high=$GF_MAX_LAYERS
+
+		# Verify high is failing; if it also passes, everything passes → use max
+		set_layers_amount "$high"
+		if run_context_stability_test "$high"; then
+			echo "All layers up to $high pass, using max."
+			set_layers_amount "$high"
+			return
+		fi
+	else
+		# Current layers fail → search [GF_MIN_LAYERS .. current-1] for highest passing
+		low=$GF_MIN_LAYERS
+		high=$((layersOnGpu - 1))
+
+		# Verify low passes; if even min fails, no solution
+		set_layers_amount "$low"
+		if ! run_context_stability_test "$low"; then
+			if [ "$low" -eq 0 ]; then
+				echo "--->"
+				echo "---> OOM at 0 layers, it's bad."
+				echo "---> consider reducing --(u)batch-size to reduce VRAM thrashing"
+				echo "---> or keeping kv cache in RAM --no-kv-offload"
+				echo "---> or set --cache-type-k q8_0 and --cache-type-v q8_0"
+				echo "--->"
+				echo "---> If using drafter, consider throwing it fully on CPU: --spec-draft-ngl 0"
+				echo "--->"
+			fi
+			echo "No passing layer found in [${GF_MIN_LAYERS}..$layersOnGpu]."
+			exit 1
+		fi
+	fi
+
+	# Binary search: narrow [low, high] until they are adjacent
+	while [ $((high - low)) -gt 1 ]; do
+		echo "Searching in range [$low...$high]"
+		mid=$(((low + high) / 2))
+
+		set_layers_amount "$mid"
+
+		# Verify the write took effect
+		layersOnGpuActual=$(get_layers_amount)
+		if [ "$mid" -ne "$layersOnGpuActual" ]; then
+			echo "Error: wanted to test $mid but have $layersOnGpuActual"
+			exit 1
+		fi
+
+		if run_context_stability_test "$mid"; then
+			# mid passes → flip point is above, move low up
+			low=$mid
+		else
+			# mid fails → flip point is below, move high down
+			high=$mid
+		fi
+	done
+
+	# low = highest passing layer, high = lowest failing layer
+	echo "Flip point found: $low passes, $high fails"
+	echo "Writing config with optimal layer value"
+	set_layers_amount "$low"
+}
+
+# ── Quick benchmark routine ──────────────────────────────────────────────────
+
+do_quick_benchmark_all() {
+	if [ "$(has_gpu_layers_marker)" -ne 1 ]; then
+		exit_no_layer_marker
+	fi
+
+	layersOnGpu=$(get_layers_amount)
+	echo "Starting at $layersOnGpu layers, going down to $GF_MIN_LAYERS"
+
+	while [ "$layersOnGpu" -ge "$GF_MIN_LAYERS" ]; do
+		set_layers_amount "$layersOnGpu"
+
+		if run_quick_benchmark "$layersOnGpu"; then
+			: # speedAchieved already printed
+		else
+			: # failure info already printed
+		fi
+
+		layersOnGpu=$((layersOnGpu - 1))
+	done
+}
+
+# ── Single stability test ────────────────────────────────────────────────────
+
+run_single_stability_test() {
+
+	if [ "$(has_gpu_layers_marker)" -ne 1 ]; then
+		exit_no_layer_marker
+	fi
+
+	read -p "Context size to use: " ppSize
+	if ! [[ "$ppSize" =~ ^[1-9][0-9]*$ ]]; then
+		echo "Error: context size must be a positive integer"
+		exit 1
+	fi
+
+	layersOnGpu=$(get_layers_amount)
+	echo "Testing with $layersOnGpu layers, ppSize=$ppSize"
+
+	run_context_stability_test "$layersOnGpu"
+}
+
+# ── Menu ──────────────────────────────────────────────────────────────────────
+fail_preflight_on_missing_binary "bc"
+fail_preflight_on_missing_binary "curl"
+fail_preflight_on_missing_binary "docker"
+fail_preflight_on_missing_binary "grep"
+fail_preflight_on_missing_binary "jq"
+fail_preflight_on_missing_binary "sed"
+fail_preflight_on_missing_binary "uvx"
+fail_preflight_on_missing_binary "xargs"
+
+while true; do
+	tty_clear
+	echo "────────────────────────────────────────────────────"
+	echo "  Glacierflow GPU Layers Autotune"
+	echo "────────────────────────────────────────────────────"
+	echo "  1) Find highest stable layer offload number"
+	echo "  2) Quick Benchmark (layers descending)"
+	echo "  3) Autotune + Quick Benchmark (sequential 1 + 2)"
+	echo "  4) Run single stability test"
+	echo "  5) Exit"
+	echo "────────────────────────────────────────────────────"
+	read -p "Select option [1-5]: " menuChoice
+
+	case "$menuChoice" in
+	1)
+		tty_clear
+		do_autotune
+		read -p "Press Enter to return to menu..."
+		;;
+	2)
+		tty_clear
+		do_quick_benchmark_all
+		read -p "Press Enter to return to menu..."
+		;;
+	3)
+		tty_clear
+		do_autotune
+		do_quick_benchmark_all
+		read -p "Press Enter to return to menu..."
+		;;
+	4)
+		tty_clear
+		run_single_stability_test
+		read -p "Press Enter to return to menu..."
+		;;
+	5)
+		echo "Exiting."
+		exit 0
+		;;
+	*)
+		echo "Invalid option. Please select 1-5."
+		read -p "Press Enter to continue..."
+		;;
+	esac
+done
