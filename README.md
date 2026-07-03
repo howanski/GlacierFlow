@@ -85,6 +85,7 @@ GF_LOG_STATS=0 # set to 1 to enable performance stats logging
 GF_MODELS_DIRECTORY=/path/to/your/models
 GF_PI_DEV_TTYD_PORT=7681
 GF_PI_DEV_WORKDIR=/path/to/coder/workdir
+GF_PROXY_DUMP_REQUESTS=0 # set to 1 to dump request/response pairs to JSON files
 GF_WEB_UI_PORT=8090
 ```
 
@@ -262,6 +263,27 @@ GlacierFlow includes a Go-based FIFO (first-in-first-out) proxy that sits betwee
 The proxy runs on port **8070** (container port 8080). It is started automatically by the daemon — no manual setup required.
 
 If you prefer to bypass the proxy entirely, uncomment the `ports` section in `docker/llama_cpp/compose.yml` and point your clients directly at port 8080 (Or create preset with ports section override).
+
+### Request/Response Dumping
+
+The proxy can record request and response pairs to JSON files for debugging and inspection. Enable it by setting `GF_PROXY_DUMP_REQUESTS=1` in your `.env` file:
+
+```env
+GF_PROXY_DUMP_REQUESTS=1
+```
+
+When enabled, each request/response pair is dumped to `docker/fifo_proxy/dumps/<timestamp>.json` with the following structure:
+
+```json
+{
+  "requestMethod": "POST",
+  "requestPath": "/v1/chat/completions",
+  "request": "...",
+  "response": "..."
+}
+```
+
+The dump is written when the response completes or when the client disconnects. Dumped files are gitignored.
 
 ---
 

@@ -18,6 +18,7 @@ data/shared/inference_up_timestamp.txt
 data/ssl_certs/cert.pem
 data/ssl_certs/key.pem
 data/stats/*.log
+docker/fifo_proxy/dumps/*.json
 docker/fifo_proxy/main.md5
 docker/fifo_proxy/proxy
 docker/llama_cpp/compose.override.yml

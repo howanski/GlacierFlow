@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 )
 
 // fifoQueue serializes HTTP requests to a backend, processing them strictly
@@ -60,7 +62,7 @@ func (q *fifoQueue) enqueue(ctx context.Context, r *http.Request, w http.Respons
 // dispatch forwards the request to the backend, copies the response back,
 // and handles streaming (SSE) correctly.
 func (q *fifoQueue) dispatch(r *http.Request, w http.ResponseWriter) {
-	backendReq, err := buildBackendRequest(q.backend, r)
+	backendReq, requestBody, err := buildBackendRequest(q.backend, r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -86,6 +88,16 @@ func (q *fifoQueue) dispatch(r *http.Request, w http.ResponseWriter) {
 		f.Flush()
 	}
 
+	// Set up response body capture if DUMP_REQUESTS is enabled.
+	var responseCapture *bytes.Buffer
+	var bodyReader io.Reader
+	if os.Getenv("DUMP_REQUESTS") == "1" {
+		responseCapture = &bytes.Buffer{}
+		bodyReader = io.TeeReader(resp.Body, responseCapture)
+	} else {
+		bodyReader = resp.Body
+	}
+
 	// Copy body – flush after each chunk so SSE streams are snappy.
 	buf := make([]byte, 1024)
 	f, flushOK := w.(http.Flusher)
@@ -95,10 +107,13 @@ func (q *fifoQueue) dispatch(r *http.Request, w http.ResponseWriter) {
 		select {
 		case <-ctx.Done():
 			log.Printf("client disconnected: %v", ctx.Err())
+			if responseCapture != nil {
+				dumpRequestResponse(r.Method, r.URL.Path, requestBody, responseCapture.Bytes())
+			}
 			return // resp.Body.Close() fires via defer
 		default:
 		}
-		n, readErr := resp.Body.Read(buf)
+		n, readErr := bodyReader.Read(buf)
 		if n > 0 {
 			if _, writeErr := w.Write(buf[:n]); writeErr != nil {
 				log.Printf("write error: %v", writeErr)
@@ -115,9 +130,14 @@ func (q *fifoQueue) dispatch(r *http.Request, w http.ResponseWriter) {
 			break
 		}
 	}
+
+	// Dump request/response pair if DUMP_REQUESTS is enabled.
+	if responseCapture != nil {
+		dumpRequestResponse(r.Method, r.URL.Path, requestBody, responseCapture.Bytes())
+	}
 }
 
-func buildBackendRequest(backend *url.URL, r *http.Request) (*http.Request, error) {
+func buildBackendRequest(backend *url.URL, r *http.Request) (*http.Request, []byte, error) {
 	// Clone the request so we can change its target.
 	backendReq := r.Clone(r.Context())
 	backendReq.RequestURI = "" // must be empty for client requests
@@ -128,12 +148,14 @@ func buildBackendRequest(backend *url.URL, r *http.Request) (*http.Request, erro
 		RawQuery: r.URL.RawQuery,
 	}
 
+	var requestBody []byte
 	// If the original request carried a body, re-create it for the backend call.
 	if r.Body != nil {
 		buf, err := io.ReadAll(r.Body)
 		if err != nil {
-			return nil, fmt.Errorf("read request body: %w", err)
+			return nil, nil, fmt.Errorf("read request body: %w", err)
 		}
+		requestBody = buf
 		r.Body = io.NopCloser(bytes.NewReader(buf)) // restore for caller
 		backendReq.Body = io.NopCloser(bytes.NewReader(buf))
 	}
@@ -147,7 +169,37 @@ func buildBackendRequest(backend *url.URL, r *http.Request) (*http.Request, erro
 	backendReq.Header.Del("Transfer-Encoding")
 	backendReq.Header.Del("Upgrade")
 
-	return backendReq, nil
+	return backendReq, requestBody, nil
+}
+
+func dumpRequestResponse(requestMethod, requestPath string, requestBody, responseBody []byte) {
+	timestamp := time.Now().Format("2006_01_02_15_04_05")
+	filename := fmt.Sprintf("dumps/%s.json", timestamp)
+
+	data := map[string]interface{}{
+		"requestMethod":  requestMethod,
+		"requestPath":    requestPath,
+		"request":        string(requestBody),
+		"response":       string(responseBody),
+	}
+
+	jsonBytes, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		log.Printf("dump marshal error: %v", err)
+		return
+	}
+
+	if err := os.MkdirAll("dumps", 0755); err != nil {
+		log.Printf("dump mkdir error: %v", err)
+		return
+	}
+
+	if err := os.WriteFile(filename, jsonBytes, 0644); err != nil {
+		log.Printf("dump write error: %v", err)
+		return
+	}
+
+	log.Printf("dumped request/response to %s", filename)
 }
 
 func main() {
