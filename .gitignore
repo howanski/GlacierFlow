@@ -1,4 +1,5 @@
 .env
+.vscode/commands
 data/hermes
 data/pi_dev/config/agent/auth.json
 data/pi_dev/config/agent/bin

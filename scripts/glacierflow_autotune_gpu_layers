@@ -71,7 +71,7 @@ set_layers_amount() {
 		docker stop "$GF_INFERENCE_SERVICE" 2>/dev/null 1>/dev/null
 		echo "BENCH" >"$GF_INFERENCE_SERVICE_UP_STATUS"
 
-		local startupTimeout=600
+		local startupTimeout=1200
 		local elapsed=0
 		while [ "$(is_server_running)" -ne 1 ] && [ "$elapsed" -lt "$startupTimeout" ]; do
 			echo -n "."
@@ -357,6 +357,9 @@ while true; do
 	3)
 		tty_clear
 		do_autotune
+		echo "--------------------------------"
+		echo "----------- PHASE 2 ------------"
+		echo "--------------------------------"
 		do_quick_benchmark_all
 		read -p "Press Enter to return to menu..."
 		;;
