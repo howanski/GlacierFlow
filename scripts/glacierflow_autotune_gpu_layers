@@ -13,6 +13,17 @@ exit_no_layer_marker() {
 	exit 1
 }
 
+print_oom_at_zero_layers() {
+	echo "--->"
+	echo "---> OOM at 0 layers, it's bad."
+	echo "---> consider reducing --(u)batch-size to reduce VRAM thrashing"
+	echo "---> or keeping kv cache in RAM --no-kv-offload"
+	echo "---> or set --cache-type-k q8_0 and maybe also --cache-type-v q8_0"
+	echo "--->"
+	echo "---> If using drafter, consider throwing it fully on CPU: --spec-draft-ngl 0"
+	echo "--->"
+}
+
 has_gpu_layers_marker() {
 	grep -c -e "--gpu-layers" "$GF_INFERENCE_COMPOSE_FILE_SOURCE" 2>/dev/null || echo 0
 }
@@ -204,6 +215,10 @@ do_autotune() {
 		echo "Test positive, going up..."
 		optimizationDirection="UP"
 	else
+		if [ "$low" -eq 0 ]; then
+			print_oom_at_zero_layers
+			exit
+		fi
 		echo "Test negative, going down..."
 		optimizationDirection="DOWN"
 	fi
@@ -234,14 +249,7 @@ do_autotune() {
 		set_layers_amount "$low"
 		if ! run_context_stability_test "$low"; then
 			if [ "$low" -eq 0 ]; then
-				echo "--->"
-				echo "---> OOM at 0 layers, it's bad."
-				echo "---> consider reducing --(u)batch-size to reduce VRAM thrashing"
-				echo "---> or keeping kv cache in RAM --no-kv-offload"
-				echo "---> or set --cache-type-k q8_0 and --cache-type-v q8_0"
-				echo "--->"
-				echo "---> If using drafter, consider throwing it fully on CPU: --spec-draft-ngl 0"
-				echo "--->"
+				print_oom_at_zero_layers
 			fi
 			echo "No passing layer found in [${GF_MIN_LAYERS}..$layersOnGpu]."
 			exit 1
@@ -287,17 +295,30 @@ do_quick_benchmark_all() {
 	layersOnGpu=$(get_layers_amount)
 	echo "Starting at $layersOnGpu layers, going down to $GF_MIN_LAYERS"
 
+	bestSpeed=""
+	bestLayers=""
+
 	while [ "$layersOnGpu" -ge "$GF_MIN_LAYERS" ]; do
 		set_layers_amount "$layersOnGpu"
 
 		if run_quick_benchmark "$layersOnGpu"; then
-			: # speedAchieved already printed
-		else
-			: # failure info already printed
+			if [ -z "$bestSpeed" ] || [ "$(echo "$speedAchieved > $bestSpeed" | bc -l)" -eq 1 ]; then
+				bestSpeed="$speedAchieved"
+				bestLayers="$layersOnGpu"
+			fi
 		fi
 
 		layersOnGpu=$((layersOnGpu - 1))
 	done
+
+	if [ -n "$bestLayers" ]; then
+		echo ""
+		echo "Best speed: $bestSpeed @ $bestLayers layers"
+		echo "Writing config with optimal layer value"
+		set_layers_amount "$bestLayers"
+	else
+		echo "No successful benchmark found."
+	fi
 }
 
 # ── Single stability test ────────────────────────────────────────────────────
