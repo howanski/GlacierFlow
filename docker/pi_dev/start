@@ -22,6 +22,10 @@ run_pi_continue() {
 	pi -c
 }
 
+run_pi_ephemeral() {
+	pi --no-session
+}
+
 automation_menu() {
 	while true; do
 		clear
@@ -172,6 +176,11 @@ run_main() {
 		echo "[N] New session"
 		echo "[C] Continue last session"
 		echo "[S] Select session"
+		echo "[E] Ephemeral (no session)"
+		# TODO pi --mode rpc could be exposed but that would be not too pragmatic
+		# better run `docker exec -it "glacierflow-pi-dev" pi $@` from the outside?
+		# or additional binary bridge like REST <-> bridge <-> pi
+		# and build webui around it?
 		echo ""
 		echo "[A] Automation"
 		echo "[K] New session with builtin conversation-starter"
@@ -193,6 +202,10 @@ run_main() {
 		n | N)
 			clear
 			run_pi
+			;;
+		e | E)
+			clear
+			run_pi_ephemeral
 			;;
 		s | S)
 			clear
