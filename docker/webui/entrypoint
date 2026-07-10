@@ -10,11 +10,11 @@ SUM_FILE=/app/main.md5
 
 if [ -f "$BINARY" ]; then
 	echo "Checking go source code against changes..."
-	controlSum="main.go"
+	controlSum="no-control-sum-yet"
 	if [ -f "$SUM_FILE" ]; then
 		controlSum=$(cat "$SUM_FILE")
 	fi
-	currentControlSum=$(md5sum "main.go")
+	currentControlSum=$(md5sum "main.go" | cut -d ' ' -f 1)
 	if [[ "$controlSum" != "$currentControlSum" ]]; then
 		echo "$currentControlSum" >"$SUM_FILE"
 		rm -f "$BINARY"
