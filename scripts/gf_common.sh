@@ -51,6 +51,11 @@ add_minimal_padding() {
 	local min_len="${2:-2}"
 	local align="${3:-right}" # 'left' or 'right' (default)
 
+	# Ensure the padding length > 0
+	if [[ -z "$min_len" ]] || ! [[ "$min_len" =~ ^[0-9]+$ ]] || [ "$min_len" -le 0 ]; then
+		min_len=2
+	fi
+
 	if [[ "$align" == "right" ]]; then
 		printf "%-${min_len}s" "$var"
 	else

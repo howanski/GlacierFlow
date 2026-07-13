@@ -215,7 +215,7 @@ do_autotune() {
 		echo "Test positive, going up..."
 		optimizationDirection="UP"
 	else
-		if [ "$low" -eq 0 ]; then
+		if [ "$layersOnGpu" -eq 0 ]; then
 			print_oom_at_zero_layers
 			exit
 		fi
