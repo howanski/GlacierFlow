@@ -8,6 +8,7 @@ GF_DAEMON_MODE_FREQUENCY=10
 GF_STATS_DIR="./../data/stats/"
 GF_LOG_STATS=0        #override in .env
 GF_HERMES_AUTOSTART=0 #override in .env
+GF_VSCODE_AUTOSTART=0 #override in .env
 
 lastPerformanceLogLine=""
 
@@ -100,19 +101,19 @@ run_proxy() {
 }
 
 run_hermes() {
-	echo "Starting hermes..."
-	cd "$rootScriptDirectory"
-	mkdir -p "../data/hermes"
-	cd "../docker/hermes/"
-	if [ -f "../../.env" ]; then
-		set -a
-		source "../../.env"
-		set +a
-	fi
 	if [[ $GF_HERMES_AUTOSTART -eq 1 ]]; then
+		echo "Starting hermes..."
+		cd "$rootScriptDirectory"
+		mkdir -p "../data/hermes"
+		cd "../docker/hermes/"
+		if [ -f "../../.env" ]; then
+			set -a
+			source "../../.env"
+			set +a
+		fi
 		docker compose -p "$GF_STACK_NAME" up -d
+		cd "$rootScriptDirectory"
 	fi
-	cd "$rootScriptDirectory"
 }
 
 run_web_ui() {
@@ -157,6 +158,21 @@ run_caddy() {
 	fi
 	docker compose -p "$GF_STACK_NAME" up -d
 	cd "$rootScriptDirectory"
+}
+
+run_vscode() {
+	if [[ $GF_VSCODE_AUTOSTART -eq 1 ]]; then
+		echo "Starting vscode..."
+		cd "$rootScriptDirectory"
+		cd "../docker/vscode/"
+		if [ -f "../../.env" ]; then
+			set -a
+			source "../../.env"
+			set +a
+		fi
+		docker compose -p "$GF_STACK_NAME" up -d
+		cd "$rootScriptDirectory"
+	fi
 }
 
 run_inference_server() {
@@ -262,6 +278,7 @@ run_main_service() {
 	run_embedding_server
 	run_proxy
 	run_hermes
+	run_vscode
 	while true; do
 		run_inference_server
 

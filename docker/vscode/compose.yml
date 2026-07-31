@@ -1,0 +1,23 @@
+services:
+  glacierflow-vscode:
+    image: codercom/code-server:${GF_VSCODE_VERSION:-latest}
+    container_name: glacierflow-vscode
+    environment:
+      - PUID=${GF_USER_ID:-1000}
+      - PGID=${GF_USER_GROUP_ID:-1000}
+    volumes:
+      - ./../../data/vscode/local:/home/coder/.local
+      - ./../../data/vscode/config:/home/coder/.config
+      - ${GF_PI_DEV_WORKDIR:-./../../data/pi_dev/workdir}:/home/coder/workdir:rw
+    restart: no
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"

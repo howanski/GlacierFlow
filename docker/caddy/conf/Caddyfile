@@ -26,3 +26,8 @@
 	tls /ssl_certs/cert.pem /ssl_certs/key.pem
 	reverse_proxy glacierflow-hermes:9119
 }
+
+:1239 {
+	tls /ssl_certs/cert.pem /ssl_certs/key.pem
+	reverse_proxy glacierflow-vscode:8080
+}

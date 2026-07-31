@@ -3,12 +3,16 @@ services:
     build:
       context: ./
       dockerfile: Dockerfile
+      args:
+        GF_USER_ID: "${GF_USER_ID:-1000}"
     container_name: "glacierflow-pi-dev"
     environment:
       - EDITOR=vim
-      - GF_PI_DEV_TTYD_USER=${GF_HTTP_USER:-glacierflow}
       - GF_PI_DEV_TTYD_PASSWORD=${GF_HTTP_PASSWORD:-glacierflow}
-    user: "1000:1000"
+      - GF_PI_DEV_TTYD_USER=${GF_HTTP_USER:-glacierflow}
+      - GF_USER_GROUP_ID=${GF_USER_GROUP_ID:-1000}
+      - GF_USER_ID=${GF_USER_ID:-1000}
+    user: "${GF_USER_ID:-1000}:${GF_USER_GROUP_ID:-1000}"
     volumes:
       - ./:/pi_dev:ro
       - ./../../data/pi_dev/config:/home/pi_dev/.pi:rw

@@ -3,6 +3,7 @@
 data/hermes
 data/pi_dev/config/agent/auth.json
 data/pi_dev/config/agent/bin
+data/pi_dev/config/agent/models-store.json
 data/pi_dev/config/agent/sessions
 data/pi_dev/config/agent/settings.json
 data/shared/benchmarks/*.txt
@@ -12,6 +13,7 @@ data/shared/inference_preset_name_target.txt
 data/shared/inference_preset_name.txt
 data/shared/inference_presets/local/*.bak
 data/shared/inference_presets/local/*.ini
+data/shared/inference_presets/local/*.jinja
 data/shared/inference_presets/local/*.yml
 data/shared/inference_status.txt
 data/shared/inference_up_hash.txt

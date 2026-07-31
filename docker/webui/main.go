@@ -163,6 +163,11 @@ func main() {
 			portHermesWeb = "7683"
 		}
 
+		portVscode := os.Getenv("GF_VSCODE_WEB_PORT")
+		if portVscode == "" {
+			portVscode = "7684"
+		}
+
 		host, _, err := net.SplitHostPort(c.Request.Host)
 		if err != nil {
 			host = c.Request.Host
@@ -178,6 +183,9 @@ func main() {
 		hermesHttpdUrl := fmt.Sprintf("%s://%s:%s/", scheme, host, portHermes)
 
 		hermesWebUrl := fmt.Sprintf("%s://%s:%s/", scheme, host, portHermesWeb)
+
+		vsCodeUrl := fmt.Sprintf("%s://%s:%s/", scheme, host, portVscode)
+
 		c.HTML(
 			http.StatusOK,
 			"index.html",
@@ -186,6 +194,7 @@ func main() {
 				"devHttpdUrl":    devHttpdUrl,
 				"hermesHttpdUrl": hermesHttpdUrl,
 				"hermesWebUrl":   hermesWebUrl,
+				"vsCodeUrl":      vsCodeUrl,
 			},
 		)
 	})

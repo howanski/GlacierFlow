@@ -3,7 +3,7 @@ export PATH="/home/ubuntu/.local/bin:$PATH"
 
 cd /home/ubuntu/workdir
 
-ttyd -W -m 1 -u 1000 -g 1000 -c "$GF_HERMES_TTYD_USER:$GF_HERMES_TTYD_PASSWORD" /init-data/start_tmux &
+ttyd -W -m 1 -u "${GF_USER_ID:-1000}" -g "${GF_USER_GROUP_ID:-1000}" -c "$GF_HERMES_TTYD_USER:$GF_HERMES_TTYD_PASSWORD" /init-data/start_tmux &
 
 hermes dashboard --host 0.0.0.0 --port 9119 &
 

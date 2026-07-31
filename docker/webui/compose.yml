@@ -9,6 +9,7 @@ services:
       - GF_PI_DEV_TTYD_PORT=${GF_PI_DEV_TTYD_PORT:-7681}
       - GF_HERMES_TTYD_PORT=${GF_HERMES_TTYD_PORT:-7682}
       - GF_HERMES_WEB_PORT=${GF_HERMES_WEB_PORT:-7683}
+      - GF_VSCODE_WEB_PORT=${GF_VSCODE_WEB_PORT:-7684}
     volumes:
       - ./:/app
       - ./../../data/shared:/app/shared:rw

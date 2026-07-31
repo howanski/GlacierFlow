@@ -4,7 +4,7 @@ services:
       context: ./
       dockerfile: Dockerfile
     container_name: "glacierflow-proxy"
-    user: "1000:1000"
+    user: "${GF_USER_ID:-1000}:${GF_USER_GROUP_ID:-1000}"
     ports:
       - "${GF_INFERENCE_PORT_HTTP:-8070}:8080"
     environment:

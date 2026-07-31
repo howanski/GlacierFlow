@@ -30,7 +30,8 @@ GlacierFlow runs llama.cpp inside Docker and lets you switch between model prese
 - Web-based UI for preset management and status monitoring
 - Embedding server (llama.cpp) for vector embeddings, toggleable via override config
 - FIFO proxy for serializing chat requests (prevents stream cut-offs during model hot-swap)
-- Caddy reverse proxy with SSL/TLS termination and basic auth for Web UI, pi.dev TTYD and Hermes
+- Caddy reverse proxy with SSL/TLS termination and basic auth for Web UI, pi.dev TTYD, Hermes TTYD and VS Code
+- User/group ID customization via `GF_USER_ID` / `GF_USER_GROUP_ID` environment variables (affects all containers)
 
 ---
 
@@ -77,6 +78,10 @@ GF_HERMES_AUTOSTART=0 # set to 1 to auto-start Hermes container with the daemon
 GF_HERMES_TTYD_PORT=7682
 GF_HERMES_WEB_PORT=7683
 GF_HERMES_WORKDIR=/path/to/hermes/workdir
+GF_USER_GROUP_ID=1000 # group ID for all containers (defaults to 1000)
+GF_USER_ID=1000 # user ID for all containers (defaults to 1000)
+GF_VSCODE_AUTOSTART=0 # set to 1 to auto-start VS Code container with the daemon
+GF_VSCODE_WEB_PORT=7684
 GF_HTTP_PASSWORD=glacierflow
 GF_HTTP_USER=glacierflow
 GF_LLAMA_MEMORY_LIMIT=50g
@@ -155,6 +160,7 @@ Open `https://localhost:8090` in your browser. The UI provides:
 - **pi.dev httpd** — direct link to the TTYD web terminal for the code generation assistant
 - **hermes httpd** — direct link to the TTYD web terminal for the Hermes agent
 - **hermes Web UI** — direct link to the Hermes dashboard
+- **VS Code** — direct link to the code-server instance
 
 
 The web UI communicates directly with the shared data directory, so it stays in sync with the daemon and CLI tools.
@@ -424,7 +430,7 @@ The automation scripts (`data/pi_dev/scripts/builtin/`) guide the AI through str
 ### Container Details
 
 - **Image**: Alpine-based with bash, git, npm, vim, rust, cargo, php, go, openjdk17, gradle, android-tools, composer, ttyd, and tmux
-- **User**: Runs as non-root (`pi_dev`, UID 1000)
+- **User**: Runs as non-root (`pi_dev`, UID configurable via `GF_USER_ID`, defaults to 1000)
 - **TTYD**: Web terminal server on port 7681 with basic auth (configurable via `GF_PI_DEV_TTYD_USER` / `GF_PI_DEV_TTYD_PASSWORD`)
 - **tmux**: Persistent session (`pi_dev_task`) with custom config mounted from `data/pi_dev/tmux.conf`
 - **Volume mounts**:
@@ -474,12 +480,53 @@ To use your local llama.cpp inference server with Hermes:
 ### Container Details
 
 - **Image**: Ubuntu-based with bash, curl, ttyd, tmux, git, vim, python3, nodejs, npm, ripgrep, ffmpeg
-- **User**: Runs as non-root (`ubuntu`, UID 1000)
+- **User**: Runs as non-root (`ubuntu`, UID configurable via `GF_USER_ID` / `GF_USER_GROUP_ID`, defaults to 1000)
 - **TTYD**: Web terminal server on port 7682 with basic auth
 - **Dashboard**: Web UI on port 7683
 - **tmux**: Persistent session (`hermes_task`)
 - **Volume mounts**:
   - Hermes data → `data/hermes/` (read-write, configurable via `GF_HERMES_WORKDIR`)
+
+---
+
+## VS Code: Online Code Editor
+
+GlacierFlow includes a [code-server](https://github.com/codercom/code-server) instance for web-based code editing. It shares the same workspace as pi.dev and is accessible through the Caddy reverse proxy.
+
+### Setup
+
+1. **Auto-start with daemon** — set `GF_VSCODE_AUTOSTART=1` in your `.env` file to start the VS Code container automatically when the daemon launches:
+
+```env
+GF_VSCODE_AUTOSTART=1
+```
+
+2. **Configure the version** (optional) — by default the latest image is used. Pin a specific version with:
+
+```env
+GF_VSCODE_VERSION=4.96.1
+```
+
+3. **Configure the port** (defaults to 7684):
+
+```env
+GF_VSCODE_WEB_PORT=7684
+```
+
+### Usage
+
+Access VS Code at `https://localhost:7684` in your browser, or click "VS Code" from the Web UI toolbar.
+
+### Container Details
+
+- **Image**: `codercom/code-server` (latest by default, configurable via `GF_VSCODE_VERSION`)
+- **User**: PUID/PGID configurable via `GF_USER_ID` / `GF_USER_GROUP_ID`
+- **Healthcheck**: Monitors HTTP availability on port 8080
+- **Volume mounts**:
+  - Local data → `data/vscode/local/` (user settings, extensions)
+  - Config → `data/vscode/config/` (code-server config)
+  - Workdir → shared with pi.dev via `GF_PI_DEV_WORKDIR`
+- **Caddy**: Reverse proxied on port 7684 through the Caddy service
 
 ---
 
@@ -501,10 +548,11 @@ To use your local llama.cpp inference server with Hermes:
 - [x] **fifo-proxy** - Go-based FIFO proxy for serializing chat requests
 - [x] **stats-viewer** - Web UI with Chart.js-based performance metrics visualization
 - [x] **caddy-proxy** - Caddy reverse proxy with SSL/TLS termination and basic auth
+- [x] **vscode** - Web-based code editor (code-server) shared workspace with pi.dev
 
 ---
 
 ## License
 
 GlacierFlow itself is a collection of custom scripts — no license applies.
-Third-party software (llama.cpp, Docker, pi.dev, llama-benchy etc.) is subject to their respective licenses.
+Third-party software (llama.cpp, Docker, pi.dev, llama-benchy, vscode and so on.) is subject to their respective licenses.

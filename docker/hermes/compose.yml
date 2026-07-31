@@ -6,9 +6,11 @@ services:
     container_name: "glacierflow-hermes"
     environment:
       - EDITOR=vim
-      - GF_HERMES_TTYD_USER=${GF_HTTP_USER:-glacierflow}
       - GF_HERMES_TTYD_PASSWORD=${GF_HTTP_PASSWORD:-glacierflow}
-    user: "1000:1000"
+      - GF_HERMES_TTYD_USER=${GF_HTTP_USER:-glacierflow}
+      - GF_USER_GROUP_ID=${GF_USER_GROUP_ID:-1000}
+      - GF_USER_ID=${GF_USER_ID:-1000}
+    user: "${GF_USER_ID:-1000}:${GF_USER_GROUP_ID:-1000}"
     volumes:
       - ./:/init-data:ro
       - ${GF_HERMES_WORKDIR:-./../../data/hermes}:/home/ubuntu/workdir:rw

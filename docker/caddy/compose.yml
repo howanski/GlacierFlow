@@ -17,6 +17,7 @@ services:
       - "${GF_INFERENCE_PORT_HTTPS:-8050}:1236"
       - "${GF_HERMES_TTYD_PORT:-7682}:1237"
       - "${GF_HERMES_WEB_PORT:-7683}:1238"
+      - "${GF_VSCODE_WEB_PORT:-7684}:1239"
     restart: "no"
     volumes:
       - ./entrypoint.sh:/entrypoint.sh:ro

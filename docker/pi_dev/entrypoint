@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ttyd -W -m 1 -u 1000 -g 1000 -c $GF_PI_DEV_TTYD_USER:$GF_PI_DEV_TTYD_PASSWORD /pi_dev/start_tmux &
+ttyd -W -m 1 -u "${GF_USER_ID:-1000}" -g "${GF_USER_GROUP_ID:-1000}" -c "$GF_PI_DEV_TTYD_USER:$GF_PI_DEV_TTYD_PASSWORD" /pi_dev/start_tmux &
 
 while true; do
 	echo "[HEALTH TICK] $(date)"
