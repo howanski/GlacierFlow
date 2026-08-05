@@ -1,0 +1,29 @@
+services:
+  glacierflow-llamacpp:
+    image: "gf-sd-vulkan-2608050014"
+    build:
+      context: .
+      dockerfile: ../../data/stable_diffusion/docker/Dockerfile
+    devices:
+      - "/dev/dri/renderD128:/dev/dri/renderD128"
+    container_name: glacierflow-llamacpp
+    volumes:
+      - ${GF_MODELS_DIRECTORY:-./../../data/models}:/models:ro
+      - ./../../data/stable_diffusion/binaries:/app:rw
+    command: >
+      --listen-port 8080
+      --listen-ip 0.0.0.0
+      --fa
+      --mmap
+      --model /models/STABLE_DIFFUSION/checkpoints/realisticStockPhoto_v20.safetensors
+      --offload-to-cpu
+    restart: no
+    deploy:
+      resources:
+        limits:
+          memory: ${GF_LLAMA_MEMORY_LIMIT:-50g}
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"

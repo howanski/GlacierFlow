@@ -20,6 +20,10 @@ data/shared/inference_up_hash.txt
 data/shared/inference_up_timestamp.txt
 data/ssl_certs/cert.pem
 data/ssl_certs/key.pem
+data/stable_diffusion/binaries
+data/stable_diffusion/current_source.txt
+data/stable_diffusion/release.zip
+data/stable_diffusion/source.zip
 data/stats/*.log
 docker/fifo_proxy/dumps/*.json
 docker/fifo_proxy/main.md5

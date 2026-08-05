@@ -9,7 +9,7 @@
 
 # GlacierFlow
 
-A lightweight toolkit for managing local AI inference servers (llama.cpp) on Linux, with hot-swap model presets, embedding server support, and automatic container orchestration. Includes Web UI, TUI and pi.dev container for software development.
+A lightweight toolkit for managing local AI inference servers (llama.cpp / stable-diffusion.cpp) on Linux, with hot-swap model presets, embedding server support, and automatic container orchestration. Includes Web UI, TUI and pi.dev container for software development.
 
 ---
 
@@ -18,7 +18,7 @@ A lightweight toolkit for managing local AI inference servers (llama.cpp) on Lin
 GlacierFlow runs llama.cpp inside Docker and lets you switch between model presets on the fly — no manual container restarts needed. A background daemon watches your config and applies changes automatically.
 
 **Current features:**
-- llama.cpp inference server managed via Docker Compose
+- llama.cpp / stable-diffusion.cpp inference server managed via Docker Compose
 - Hot-swap between inference presets (YAML configs)
 - Automatic container restarts when preset changes
 - Preset loading time tracking & status monitoring
@@ -40,7 +40,7 @@ GlacierFlow runs llama.cpp inside Docker and lets you switch between model prese
 - Linux (tested on Arch/Manjaro)
 - Docker & Docker Compose
 - GPU drivers (Vulkan for AMD/NVIDIA)
-- Bash, curl, grep, awk, md5sum, openssl, and other coreutils
+- Bash, curl, grep, awk, md5sum, openssl, unzip, and other coreutils
 
 ---
 
@@ -80,6 +80,7 @@ GF_HERMES_WEB_PORT=7683
 GF_HERMES_WORKDIR=/path/to/hermes/workdir
 GF_USER_GROUP_ID=1000 # group ID for all containers (defaults to 1000)
 GF_USER_ID=1000 # user ID for all containers (defaults to 1000)
+GF_STABLE_DIFFUSION_ENABLE=0 # set to 1 to auto-download/update stable-diffusion.cpp binaries on daemon start
 GF_VSCODE_AUTOSTART=0 # set to 1 to auto-start VS Code container with the daemon
 GF_VSCODE_WEB_PORT=7684
 GF_HTTP_PASSWORD=glacierflow
@@ -171,7 +172,7 @@ The web UI communicates directly with the shared data directory, so it stays in 
 
 Preset files are Docker Compose YAML snippets that override the base `compose.yml`. They define:
 
-- **command**: llama.cpp server arguments (model path, context size, GPU layers, etc.)
+- **command**:inference server arguments (model path, context size, GPU layers, diffusion models, etc.)
 - **devices**: GPU device passthrough (e.g., `/dev/dri/renderD128` for AMD)
 - **volumes**: Model directory mount paths
 
@@ -234,6 +235,49 @@ The script modifies `--gpu-layers` in the compose source file and restarts the i
 - The autotune script works on currently loaded preset and does not support llama's router mode
 - The preset file must contain a `--gpu-layers` argument in one line for the script to work
 
+
+---
+
+## Stable Diffusion
+
+GlacierFlow supports running [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) for image generation, replacing llama.cpp inference server. The daemon can automatically download and update the binaries on start.
+
+### Setup
+
+1. **Enable in `.env`** — set `GF_STABLE_DIFFUSION_ENABLE=1` to have the daemon fetch/update stable-diffusion.cpp binaries automatically on each startup:
+
+```env
+GF_STABLE_DIFFUSION_ENABLE=1
+```
+
+The source URL is configurable via `GF_STABLE_DIFFUSION_SOURCE` in `.env`. The default points to a Vulkan build. Binaries are extracted into `data/stable_diffusion/binaries/`, and the current version is tracked in `data/stable_diffusion/current_source.txt`.
+
+2. **Pick a preset** — example Stable Diffusion presets live in `data/shared/inference_presets/examples/`. Copy one to your local directory:
+
+```bash
+cp data/shared/inference_presets/examples/vulkan_8gb_stable_diffusion_realistic_stock_photo_v20.yml \
+   data/shared/inference_presets/local/
+```
+
+Select it as usual via the preset switcher or Web UI.
+
+3. **Restart the daemon** — the binaries will be downloaded on next boot and the inference server will restart with the new preset.
+
+### Example Presets
+
+| Preset | Model | Notes |
+|--------|-------|-------|
+| `vulkan_8gb_stable_diffusion_realistic_stock_photo_v20.yml` | realisticStockPhoto v2.0 | SD 1.5 model, Vulkan + CPU offload |
+| `vulkan_8gb_stable_diffusion_ideogram_4.yml` | ideogram-4 GGUF | Includes LLM VAE pipeline with Qwen3-VL, Vulkan + CPU offload |
+
+### How It Works
+
+When `GF_STABLE_DIFFUSION_ENABLE=1`, the daemon calls `data/stable_diffusion/update_source.sh` during startup. The script:
+- Checks if the binary source URL has changed (compared against `current_source.txt`)
+- Downloads and extracts the release archive into `binaries/`
+- Overwrites any existing installation
+
+The preset YAML files use a Dockerfile at `data/stable_diffusion/docker/Dockerfile` that installs Vulkan drivers and runs `/app/sd-server` as entrypoint. The inference server port (8080) is shared.
 
 ---
 
@@ -549,10 +593,11 @@ Access VS Code at `https://localhost:7684` in your browser, or click "VS Code" f
 - [x] **stats-viewer** - Web UI with Chart.js-based performance metrics visualization
 - [x] **caddy-proxy** - Caddy reverse proxy with SSL/TLS termination and basic auth
 - [x] **vscode** - Web-based code editor (code-server) shared workspace with pi.dev
+- [x] **stable-diffusion** - Image generation server with automatic binary download/update
 
 ---
 
 ## License
 
 GlacierFlow itself is a collection of custom scripts — no license applies.
-Third-party software (llama.cpp, Docker, pi.dev, llama-benchy, vscode and so on.) is subject to their respective licenses.
+Third-party software (llama.cpp, stable-diffusion.cpp, Docker, pi.dev, llama-benchy, vscode and so on.) is subject to their respective licenses.

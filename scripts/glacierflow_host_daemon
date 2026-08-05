@@ -6,9 +6,10 @@ source "$rootScriptDirectory/gf_common.sh"
 
 GF_DAEMON_MODE_FREQUENCY=10
 GF_STATS_DIR="./../data/stats/"
-GF_LOG_STATS=0        #override in .env
-GF_HERMES_AUTOSTART=0 #override in .env
-GF_VSCODE_AUTOSTART=0 #override in .env
+GF_LOG_STATS=0               #override in .env
+GF_HERMES_AUTOSTART=0        #override in .env
+GF_VSCODE_AUTOSTART=0        #override in .env
+GF_STABLE_DIFFUSION_ENABLE=0 #override in .env
 
 lastPerformanceLogLine=""
 
@@ -70,6 +71,16 @@ log_inference_status() {
 		echo "Inference status change to: $1"
 	fi
 	cd $workingDir
+}
+
+prep_stable_diffusion_binaries() {
+	if [[ $GF_STABLE_DIFFUSION_ENABLE -eq 1 ]]; then
+		echo "Updating StableDiffusion.cpp binaries..."
+		cd $rootScriptDirectory
+		cd "../data/stable_diffusion/"
+		./update_source.sh
+		cd $rootScriptDirectory
+	fi
 }
 
 run_embedding_server() {
@@ -211,6 +222,10 @@ run_inference_server() {
 					log_inference_status "LOADING"
 				elif [ "$responseCode" == "200" ]; then
 					log_inference_status "RUNNING"
+				elif [ "$responseCode" == "404" ]; then
+					# different service in use i.e. stable-diffusion.cpp
+					# Hacky until better idea comes up
+					log_inference_status "RUNNING"
 				else
 					log_inference_status "UMM..."
 				fi
@@ -260,6 +275,7 @@ run_preflight_checks() {
 	fail_preflight_on_missing_binary openssl
 	fail_preflight_on_missing_binary pwd
 	fail_preflight_on_missing_binary tail
+	fail_preflight_on_missing_binary unzip
 	fail_preflight_on_missing_binary xargs
 	echo "Preflight check DONE"
 }
@@ -279,6 +295,7 @@ run_main_service() {
 	run_proxy
 	run_hermes
 	run_vscode
+	prep_stable_diffusion_binaries
 	while true; do
 		run_inference_server
 
