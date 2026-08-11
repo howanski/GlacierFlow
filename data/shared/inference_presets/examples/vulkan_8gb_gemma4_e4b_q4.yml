@@ -17,7 +17,7 @@ services:
       --mmproj /models/unsloth/gemma-4-E4B-it-qat-GGUF/mmproj-F32.gguf
       --model /models/unsloth/gemma-4-E4B-it-qat-GGUF/gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf
       --gpu-layers 999
-      --no-mmap
+      --load-mode none
       --parallel 1
       --port 8080
       --presence-penalty 0.0
