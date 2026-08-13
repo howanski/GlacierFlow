@@ -5,9 +5,13 @@
         "codercom",
         "ggml",
         "glacierflow",
+        "leejet",
         "llamacpp",
+        "mlock",
         "multimodel",
         "PUID",
+        "safetensors",
+        "schnell",
         "TTYD"
     ]
 }

@@ -1,0 +1,39 @@
+services:
+  glacierflow-llamacpp:
+    image: "gf-sd-vulkan-2608050014"
+    build:
+      context: .
+      dockerfile: ../../data/stable_diffusion/docker/Dockerfile
+    container_name: glacierflow-llamacpp
+    volumes:
+      - ${GF_MODELS_DIRECTORY:-./../../data/models}:/models:ro
+      - ./../../data/stable_diffusion/binaries:/app:rw
+    command: >
+      --listen-port 8080
+      --listen-ip 0.0.0.0
+      --cfg-scale 1.0
+      --diffusion-fa
+      --diffusion-model /models/leejet/Z-Image-Turbo-GGUF/z_image_turbo-Q4_K.gguf
+      --fa
+      --llm /models/unsloth/Qwen3-4B-Instruct-2507-GGUF/Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+      --mmap
+      --offload-to-cpu
+      --steps 8
+      --vae /models/STABLE_DIFFUSION/vae/flux1_schnell_vae.safetensors
+      -H 1024
+      -p "A cinematic, melancholic photograph of a solitary hooded figure walking through a sprawling, rain-slicked metropolis at night. The city lights are a chaotic blur of neon orange and cool blue, reflecting on the wet asphalt. The scene evokes a sense of being a single component in a vast machine. Superimposed over the image in a sleek, modern, slightly glitched font is the philosophical quote: 'THE CITY IS A CIRCUIT BOARD, AND I AM A BROKEN TRANSISTOR.' -- moody, atmospheric, profound, dark academic"
+      -W 512
+    restart: no
+    devices:
+      - "/dev/dri/renderD128:/dev/dri/renderD128"
+    deploy:
+      resources:
+        limits:
+          memory: ${GF_LLAMA_MEMORY_LIMIT:-50g}
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+# Instructions: https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/z_image.md
