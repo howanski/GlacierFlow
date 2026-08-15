@@ -12,18 +12,24 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"sync"
 	"time"
 )
 
 // fifoQueue serializes HTTP requests to a backend, processing them strictly
-// in the order they arrive.
+// in the order they arrive. A single worker goroutine consumes an ordered
+// channel, so arrival order is preserved. Requests whose client disconnected
+// while waiting in the queue are skipped without occupying the backend.
 type fifoQueue struct {
-	mu      sync.Mutex
-	cond    *sync.Cond
-	running bool
+	jobs    chan fifoJob
 	backend *url.URL
 	client  *http.Client
+}
+
+type fifoJob struct {
+	ctx  context.Context
+	r    *http.Request
+	w    http.ResponseWriter
+	done chan struct{}
 }
 
 func newFifoQueue(backendURL string) *fifoQueue {
@@ -32,31 +38,39 @@ func newFifoQueue(backendURL string) *fifoQueue {
 		log.Fatalf("invalid backend URL %q: %v", backendURL, err)
 	}
 	q := &fifoQueue{
+		jobs:    make(chan fifoJob),
 		backend: u,
 		client: &http.Client{
 			Timeout: 0, // no timeout – streaming can last a long time
 		},
 	}
-	q.cond = sync.NewCond(&q.mu)
+	go q.worker()
 	return q
 }
 
-// enqueue schedules a request for FIFO processing. It blocks until it is
-// this request's turn, then dispatches it and signals the next waiter.
-func (q *fifoQueue) enqueue(ctx context.Context, r *http.Request, w http.ResponseWriter) {
-	q.mu.Lock()
-	for q.running {
-		q.cond.Wait()
+// worker processes queued requests one at a time, in arrival order.
+func (q *fifoQueue) worker() {
+	for job := range q.jobs {
+		if job.ctx.Err() != nil {
+			log.Printf("skipping queued %s %s: client disconnected while waiting", job.r.Method, job.r.URL.Path)
+		} else {
+			q.dispatch(job.r, job.w)
+		}
+		close(job.done)
 	}
-	q.running = true
-	q.mu.Unlock()
+}
 
-	q.dispatch(r, w)
-
-	q.mu.Lock()
-	q.running = false
-	q.cond.Broadcast()
-	q.mu.Unlock()
+// enqueue schedules a request for FIFO processing and blocks until it has
+// been processed (or skipped because the client went away). A client that
+// disconnects while waiting no longer holds its slot: the request is
+// dropped as soon as it reaches the head of the queue.
+func (q *fifoQueue) enqueue(ctx context.Context, r *http.Request, w http.ResponseWriter) {
+	if ctx.Err() != nil {
+		return
+	}
+	job := fifoJob{ctx: ctx, r: r, w: w, done: make(chan struct{})}
+	q.jobs <- job
+	<-job.done
 }
 
 // dispatch forwards the request to the backend, copies the response back,
@@ -177,10 +191,10 @@ func dumpRequestResponse(requestMethod, requestPath string, requestBody, respons
 	filename := fmt.Sprintf("dumps/%s.json", timestamp)
 
 	data := map[string]interface{}{
-		"requestMethod":  requestMethod,
-		"requestPath":    requestPath,
-		"request":        string(requestBody),
-		"response":       string(responseBody),
+		"requestMethod": requestMethod,
+		"requestPath":   requestPath,
+		"request":       string(requestBody),
+		"response":      string(responseBody),
 	}
 
 	jsonBytes, err := json.MarshalIndent(data, "", "  ")
