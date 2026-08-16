@@ -9,6 +9,8 @@ RUN curl -fsSL https://pi.dev/install.sh | sh
 
 RUN pi install git:github.com/badlogic/pi-skills
 
+RUN pi install npm:@narumitw/pi-goal
+
 USER pi_dev
 
 CMD ["/pi_dev/entrypoint"]

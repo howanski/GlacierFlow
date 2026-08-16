@@ -4,6 +4,7 @@ data/hermes
 data/pi_dev/config/agent/auth.json
 data/pi_dev/config/agent/bin
 data/pi_dev/config/agent/models-store.json
+data/pi_dev/config/agent/pi-goal.json
 data/pi_dev/config/agent/sessions
 data/pi_dev/config/agent/settings.json
 data/shared/benchmarks/*.txt
