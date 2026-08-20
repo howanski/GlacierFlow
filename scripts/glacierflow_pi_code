@@ -5,6 +5,7 @@ source "$rootScriptDirectory/gf_common.sh"
 # ── Script-specific constants ─────────────────────────────────────────────────
 
 GF_PI_DEV_SERVICE="glacierflow-pi-dev"
+GF_CONTAINER_START_TIMEOUT=120
 
 # ── pi.dev helpers ────────────────────────────────────────────────────────────
 
@@ -50,10 +51,17 @@ pi_dev_start() {
 	fi
 	docker compose -p "$GF_STACK_NAME" up -d
 	local isRunning="0"
+	local elapsed=0
 	while [[ $isRunning == "0" ]]; do
-		echo "waiting for container..."
+		if [ "$elapsed" -ge "$GF_CONTAINER_START_TIMEOUT" ]; then
+			echo "Error: container failed to start within ${GF_CONTAINER_START_TIMEOUT}s. Aborting."
+			cd "$rootScriptDirectory"
+			return 1
+		fi
+		echo "waiting for container... (${elapsed}/${GF_CONTAINER_START_TIMEOUT}s)"
 		isRunning=$(is_pi_dev_running)
 		sleep 1
+		elapsed=$((elapsed + 1))
 	done
 	cd "$rootScriptDirectory"
 }

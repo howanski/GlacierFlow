@@ -293,7 +293,7 @@ The daemon tracks the server state in `data/shared/inference_status.txt`:
 | `LAUNCHING` | Docker compose is pulling/starting |
 | `LOCKED` | Server is locked (inference lock file present) |
 | `NOT CONFIGURED` | No active config found |
-| `UMM...` | Unexpected response |
+| `DEGRADED` | Unexpected response |
 
 ---
 

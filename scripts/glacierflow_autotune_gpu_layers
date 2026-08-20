@@ -25,7 +25,9 @@ print_oom_at_zero_layers() {
 }
 
 has_gpu_layers_marker() {
-	grep -c -e "--gpu-layers" "$GF_INFERENCE_COMPOSE_FILE_SOURCE" 2>/dev/null || echo 0
+	local n
+	n=$(grep -c -e "--gpu-layers" "$GF_INFERENCE_COMPOSE_FILE_SOURCE" 2>/dev/null)
+	[[ -n "$n" ]] && echo "$n" || echo 0
 }
 
 get_layers_amount() {

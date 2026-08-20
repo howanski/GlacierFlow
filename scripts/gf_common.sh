@@ -32,7 +32,7 @@ tty_clear() {
 }
 
 has_binary() {
-	if [ -f "$(which "$1")" ]; then
+	if command -v "$1" >/dev/null 2>&1; then
 		echo "1"
 	else
 		echo "0"

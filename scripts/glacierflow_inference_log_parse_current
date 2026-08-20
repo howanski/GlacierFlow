@@ -2,7 +2,7 @@
 rootScriptDirectory=$(pwd)
 source "$rootScriptDirectory/gf_common.sh"
 
-fullLog=$(docker logs --timestamps --tail 1000 glacierflow-llamacpp 2>&1)
+fullLog=$(docker logs --timestamps --tail 1000 "$GF_INFERENCE_SERVICE" 2>&1)
 
 draftTime=""
 evalTime=""
@@ -29,7 +29,7 @@ if [ ! -z "$draftInfoLine" ]; then
 	fi
 fi
 
-evalInfoLine=$(echo "$fullLog" | grep "eval time" | tail -1)
+evalInfoLine=$(echo "$fullLog" | grep "eval time" | grep -v "prompt" | tail -1)
 if [ ! -z "$evalInfoLine" ]; then
 	evalTime=$(echo "$evalInfoLine" | cut -d " " -f 1 | cut -d "." -f 1 | sed "s/T/ /")
 	if [ ! -z "$evalTime" ]; then
