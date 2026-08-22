@@ -211,7 +211,7 @@ run_inference_server() {
 
 	if [[ "$ymlSourceHash" == "$ymlTargetHash" ]]; then
 		# chosen setup OK, make sure it IS running
-		if [ "$(docker ps | grep "$GF_INFERENCE_SERVICE" | wc -l)" -lt 1 ]; then
+		if [ "$(docker ps --filter status=running | grep "$GF_INFERENCE_SERVICE" | wc -l)" -lt 1 ]; then
 			forceInferenceServerRun=1
 		else
 			# INFERENCE SERVER UP - is it responding?

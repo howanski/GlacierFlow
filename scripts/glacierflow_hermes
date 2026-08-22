@@ -46,7 +46,7 @@ hermes_stop() {
 }
 
 is_hermes_running() {
-	if [ "$(docker ps | grep "$GF_HERMES_SERVICE" | wc -l)" -lt 1 ]; then
+	if [ "$(docker ps --filter status=running | grep "$GF_HERMES_SERVICE" | wc -l)" -lt 1 ]; then
 		echo "0"
 	else
 		echo "1"

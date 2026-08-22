@@ -22,7 +22,7 @@ inference_preset_change() {
 }
 
 is_pi_dev_running() {
-	if [ "$(docker ps | grep "$GF_PI_DEV_SERVICE" | wc -l)" -lt 1 ]; then
+	if [ "$(docker ps --filter status=running | grep "$GF_PI_DEV_SERVICE" | wc -l)" -lt 1 ]; then
 		echo "0"
 	else
 		echo "1"
