@@ -10,7 +10,6 @@ RUN apk add bash curl ttyd tmux git npm vim
 
 # USER-DEFINED PACKAGES (space-separated, from .env via compose build-arg)
 RUN if [ -n "$GF_PI_EXTRA_PACKAGES" ]; then \
-        echo "Installing extra packages: $GF_PI_EXTRA_PACKAGES"; \
         apk add $GF_PI_EXTRA_PACKAGES; \
     fi
 

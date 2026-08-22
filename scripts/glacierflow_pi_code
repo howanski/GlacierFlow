@@ -36,6 +36,11 @@ pi_dev_attach() {
 pi_dev_reset() {
 	cd "$rootScriptDirectory"
 	cd "../docker/pi_dev/"
+	if [ -f "../../.env" ]; then
+		set -a
+		source "../../.env"
+		set +a
+	fi
 	docker compose -p "$GF_STACK_NAME" build --no-cache
 	cd "$rootScriptDirectory"
 }
