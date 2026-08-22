@@ -165,6 +165,20 @@ kickoff_menu() {
 	done
 }
 
+pi_update() {
+	export PATH="$HOME/.local/bin:$PATH"
+	if command -v pi >/dev/null; then
+		echo "Checking for updates..."
+		pi update
+		pi update --extensions
+	else
+		echo "installing pi..."
+		curl -fsSL https://pi.dev/install.sh | sh
+		# skipping extensions installation 
+		# (no enforcement, let user install extensions, they survive image rebuild)
+	fi
+}
+
 run_main() {
 	local actionToRun
 	while true; do
@@ -229,5 +243,7 @@ run_main() {
 		esac
 	done
 }
+
+pi_update
 
 run_main

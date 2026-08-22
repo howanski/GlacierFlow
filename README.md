@@ -478,9 +478,10 @@ The automation scripts (`data/pi_dev/scripts/builtin/`) guide the AI through str
 
 ### Container Details
 
-- **Image**: Alpine-based with bash, git, npm, vim, rust, cargo, php, go, openjdk17, gradle, android-tools, composer, ttyd, and tmux
+- **Image**: Alpine-based with bash, curl, ttyd, tmux, git, npm, and vim as basic requirements. Additional packages can be passed via `GF_PI_EXTRA_PACKAGES` .env arg (space-separated list).
 - **User**: Runs as non-root (`pi_dev`, UID configurable via `GF_USER_ID`, defaults to 1000)
 - **TTYD**: Web terminal server on port 7681 with basic auth (configurable via `GF_PI_DEV_TTYD_USER` / `GF_PI_DEV_TTYD_PASSWORD`)
+- **Auto-update**: On startup, the container checks for and applies pi.dev updates automatically. Extensions are not pre-installed but can be added manually — they survive image rebuilds.
 - **tmux**: Persistent session (`pi_dev_task`) with custom config mounted from `data/pi_dev/tmux.conf`
 - **Volume mounts**:
   - Project root → `/pi_dev` (read-only)

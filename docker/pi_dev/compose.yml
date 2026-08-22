@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
       args:
         GF_USER_ID: "${GF_USER_ID:-1000}"
+        GF_PI_EXTRA_PACKAGES: ${GF_PI_EXTRA_PACKAGES:-}
     container_name: "glacierflow-pi-dev"
     environment:
       - EDITOR=vim

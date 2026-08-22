@@ -1,15 +1,18 @@
 FROM alpine:3.22.4
 
 ARG GF_USER_ID=1000
+ARG GF_PI_EXTRA_PACKAGES=""
+
 RUN adduser -D -u ${GF_USER_ID} pi_dev
 
-RUN apk add bash curl ttyd tmux libstdc++ gcompat git npm vim rust cargo php go openjdk17 gradle android-tools composer make cmake ninja gcc g++ git perl python3
+# BASIC REQUIREMENTS
+RUN apk add bash curl ttyd tmux git npm vim
 
-RUN curl -fsSL https://pi.dev/install.sh | sh
-
-RUN pi install git:github.com/badlogic/pi-skills
-
-RUN pi install npm:@narumitw/pi-goal
+# USER-DEFINED PACKAGES (space-separated, from .env via compose build-arg)
+RUN if [ -n "$GF_PI_EXTRA_PACKAGES" ]; then \
+        echo "Installing extra packages: $GF_PI_EXTRA_PACKAGES"; \
+        apk add $GF_PI_EXTRA_PACKAGES; \
+    fi
 
 USER pi_dev
 
