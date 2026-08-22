@@ -6,13 +6,30 @@
       "apiKey": "none",
       "models": [
         {
+          "id": "glacierflow-coder-feather"
+        },
+        {
+          "id": "glacierflow-coder-light"
+        },
+        {
           "id": "glacierflow-coder-default"
         },
         {
           "id": "glacierflow-coder-heavy"
         },
         {
-          "id": "glacierflow-coder-fast"
+          "id": "glacierflow-coder-thinking-feather",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "off": null
+          }
+        },
+        {
+          "id": "glacierflow-coder-thinking-light",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "off": null
+          }
         },
         {
           "id": "glacierflow-coder-thinking-default",
@@ -23,13 +40,6 @@
         },
         {
           "id": "glacierflow-coder-thinking-heavy",
-          "reasoning": true,
-          "thinkingLevelMap": {
-            "off": null
-          }
-        },
-        {
-          "id": "glacierflow-coder-thinking-fast",
           "reasoning": true,
           "thinkingLevelMap": {
             "off": null
