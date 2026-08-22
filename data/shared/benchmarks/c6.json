@@ -1,0 +1,17 @@
+{
+    "messages": [
+        {
+            "role": "system",
+            "content": "You are a senior software engineer working inside a coding assistant. Answer with complete, production-ready code. Do not ask clarifying questions - make reasonable assumptions and state them briefly."
+        },
+        {
+            "role": "user",
+            "content": "Our Go metrics service has a counter that silently loses increments under load. Here is the current implementation:\n\n```go\n// store/store.go\npackage store\n\n// Counter is a string-keyed counter shared across goroutines.\ntype Counter struct {\n\tvalues map[string]int\n}\n\nfunc New() *Counter {\n\treturn &Counter{values: make(map[string]int)}\n}\n\nfunc (c *Counter) Incr(key string) {\n\tc.values[key]++\n}\n\nfunc (c *Counter) Get(key string) int {\n\treturn c.values[key]\n}\n\nfunc (c *Counter) Keys() []string {\n\tout := make([]string, 0, len(c.values))\n\tfor k := range c.values {\n\t\tout = append(out, k)\n\t}\n\treturn out\n}\n```\n\nFix the data race while keeping the exported API (New, Incr, Get, Keys) unchanged, and make Keys() return a sorted snapshot so callers can iterate deterministically.\n\nReply with:\n1. The complete fixed store.go in a single go code block.\n2. A complete store_test.go in a single go code block with table-driven tests covering: single-goroutine increments, concurrent increments across 64 goroutines and 1000 keys (verify the exact total using sync.WaitGroup), and Keys() ordering.\n3. A short \"Root cause\" section of at most 100 words explaining what was wrong and why your fix is safe."
+        }
+    ],
+    "max_tokens": 600,
+    "stream": false,
+    "return_progress": false,
+    "backend_sampling": false,
+    "timings_per_token": true
+}

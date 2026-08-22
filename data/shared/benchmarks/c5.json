@@ -1,0 +1,17 @@
+{
+    "messages": [
+        {
+            "role": "system",
+            "content": "You are a senior software engineer working inside a coding assistant. Answer with complete, production-ready code. Do not ask clarifying questions - make reasonable assumptions and state them briefly."
+        },
+        {
+            "role": "user",
+            "content": "This TypeScript function from our checkout service is a pre-release cleanup target. It works, but it mutates its inputs, throws strings, and has no types:\n\n```typescript\nfunction processOrder(cart, user, promoCode) {\n  var total = 0;\n  for (var i = 0; i < cart.items.length; i++) {\n    cart.items[i].price = cart.items[i].price * 1;\n    if (cart.items[i].quantity < 0) {\n      throw \"bad quantity\";\n    }\n    total = total + cart.items[i].price * cart.items[i].quantity;\n  }\n  if (promoCode) {\n    if (promoCode == \"SAVE10\") {\n      total = total * 0.9;\n    } else if (promoCode == \"FREE\") {\n      total = 0;\n    } else {\n      console.log(\"unknown promo, ignoring: \" + promoCode);\n    }\n  }\n  cart.items = [];\n  user.lastOrderTotal = total;\n  return { total: total, placedAt: new Date().toISOString() };\n}\n```\n\nRefactor it into a clean, typed module for TypeScript 5.x in strict mode:\n\n1. Define exported interfaces: CartItem, Cart, User, PromotionResult and Order.\n2. Split the logic into small pure functions: validateCart, calculateSubtotal, applyPromotion and buildOrder, plus a top-level processOrder that composes them.\n3. Replace the string throw with a typed CheckoutError class hierarchy (at minimum InvalidCartError and UnknownPromotionError). Unknown promo codes must be rejected, not silently ignored.\n4. Do not mutate the input cart or user; return the new Order and the updated user as part of a result object.\n5. Preserve the existing pricing behavior (SAVE10 = 10% off subtotal, FREE = total zero) and the ISO timestamp.\n\nReply with the complete refactored module in a single typescript code block, followed by a short \"Changes\" section of at most 150 words listing the behavioral decisions you made."
+        }
+    ],
+    "max_tokens": 600,
+    "stream": false,
+    "return_progress": false,
+    "backend_sampling": false,
+    "timings_per_token": true
+}

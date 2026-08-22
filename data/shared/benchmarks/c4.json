@@ -1,0 +1,17 @@
+{
+    "messages": [
+        {
+            "role": "system",
+            "content": "You are a senior software engineer working inside a coding assistant. Answer with complete, production-ready code. Do not ask clarifying questions - make reasonable assumptions and state them briefly."
+        },
+        {
+            "role": "user",
+            "content": "We are extending our internal API gateway (Python 3.11, standard library only). Here is the current handler module:\n\n```python\n# gateway/handler.py\nimport time\nfrom dataclasses import dataclass\n\n\n@dataclass\nclass Request:\n    client_id: str\n    method: str\n    path: str\n\n\nclass Gateway:\n    def __init__(self) -> None:\n        self.routes: dict[str, object] = {}\n\n    def register(self, path: str, handler: object) -> None:\n        self.routes[path] = handler\n\n    def handle(self, request: Request) -> dict:\n        handler = self.routes.get(request.path)\n        if handler is None:\n            return {\"status\": 404, \"body\": \"not found\"}\n        return handler(request)\n```\n\nAdd per-client rate limiting to the Gateway using the token bucket algorithm:\n\n1. Each client_id gets its own bucket with a capacity of 20 tokens, refilled at 10 tokens per second.\n2. Buckets are created lazily on first request and must not grow unbounded: evict buckets that have been idle for more than 60 seconds.\n3. If a request arrives and its bucket has no tokens, return {\"status\": 429, \"body\": \"rate limited\", \"retry_after\": <seconds until the next token>} without calling the handler.\n4. Use time.monotonic() for all timing so the limiter stays correct across wall-clock adjustments.\n5. Keep the existing public API (register/handle) unchanged.\n\nReply with the complete updated handler.py in a single python code block (including docstrings and type hints), followed by a short \"Design notes\" section of at most 150 words explaining your eviction strategy and any assumptions you made."
+        }
+    ],
+    "max_tokens": 600,
+    "stream": false,
+    "return_progress": false,
+    "backend_sampling": false,
+    "timings_per_token": true
+}

@@ -5,6 +5,7 @@
             "content": "I have tables:\n```\ndepartments(DepartmentId, DepartmentName)\nstudents(DepartmentId, StudentId, StudentName)\n```\nWrite a MySQL query to list all students in the Computer Science department."
         }
     ],
+    "max_tokens": 600,
     "stream": false,
     "return_progress": false,
     "backend_sampling": false,

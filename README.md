@@ -191,13 +191,17 @@ GlacierFlow includes a benchmark runner that measures throughput (tokens/sec) ac
 cd scripts
 ./glacierflow_benchmark
 
-# Run benchmarks for the currently loaded model
+# Run benchmarks for the currently loaded model (default 3 passes per benchmark)
 cd scripts
 ./glacierflow_benchmark run
+
+# Run benchmarks with a custom number of passes per benchmark
+cd scripts
+./glacierflow_benchmark run 5
 ```
 
 The runner:
-- Executes each benchmark 3 times and reports the average TPS
+- Executes each benchmark N times and reports the average TPS (default 3; set via the `passes` argument or the interactive prompt)
 - Skips benchmarks already completed for a given model hash
 - Stores results in `data/shared/benchmarks/<benchmark_name>.txt` (one line per model hash)
 - Requires the inference server to be running (`RUNNING` status)
@@ -209,8 +213,9 @@ The runner:
 | `c1.json` | SQL | Generate a MySQL query from a schema |
 | `c2.json` | Bash | Write a file-sorting script |
 | `c3.json` | PHP | Optimize a user-processing loop |
-| `l10k.json` | General | Article summarization |
-| `p1.json` | Creative | Write a ~100-word travel description |
+| `c4.json` | Python | Add token-bucket rate limiting to an API gateway |
+| `c5.json` | TypeScript | Refactor a checkout service into a typed module |
+| `c6.json` | Go | Fix a data race in a shared counter |
 
 ---
 
