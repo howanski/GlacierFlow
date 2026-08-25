@@ -33,6 +33,10 @@ pi_dev_attach() {
 	docker exec -it "$GF_PI_DEV_SERVICE" bash /pi_dev/start
 }
 
+pi_dev_attach_tmux() {
+	docker exec -it "$GF_PI_DEV_SERVICE" bash /pi_dev/start_tmux
+}
+
 pi_dev_reset() {
 	cd "$rootScriptDirectory"
 	cd "../docker/pi_dev/"
@@ -99,6 +103,7 @@ run_main() {
 		echo "Select action:"
 		if [ "$(is_pi_dev_running)" -eq 1 ]; then
 			echo "[A] attach to pi.dev"
+			echo "[H] attach to pi.dev (httpd/tmux session)"
 			echo "[D] stop pi.dev container"
 		else
 			echo "[U] start pi.dev container"
@@ -126,6 +131,10 @@ run_main() {
 		a | A)
 			tty_clear
 			pi_dev_attach
+			;;
+		h | H)
+			tty_clear
+			pi_dev_attach_tmux
 			;;
 		r | R)
 			tty_clear
