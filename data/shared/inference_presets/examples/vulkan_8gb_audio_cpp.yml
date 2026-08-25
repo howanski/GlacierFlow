@@ -1,0 +1,33 @@
+services:
+  glacierflow-llamacpp:
+    image: "gf-audiocpp-260825"
+    build:
+      context: .
+      dockerfile: ../../data/audio_cpp/docker/Dockerfile
+    container_name: glacierflow-llamacpp
+    volumes:
+      - ./../../data/audio_cpp/audio.cpp/build/linux-vulkan-release/bin:/app:rw
+      - ${GF_MODELS_DIRECTORY:-./../../data/models}/AUDIO_CPP:/app/models:rw
+    command: >
+      --backend vulkan
+      --ui
+      --ui-management
+      --host 0.0.0.0
+      --port 8080
+      --threads 6
+      --max-loaded-models 1
+    restart: no
+    devices:
+      - "/dev/dri:/dev/dri"
+    deploy:
+      resources:
+        limits:
+          memory: ${GF_LLAMA_MEMORY_LIMIT:-50g}
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+# REPO          https://huggingface.co/audio-cpp/audio.cpp-gguf/tree/main
+# DOCUMENTATION https://github.com/0xShug0/audio.cpp/blob/main/examples/docker/server/EXAMPLE.md

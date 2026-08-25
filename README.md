@@ -9,7 +9,7 @@
 
 # GlacierFlow
 
-A lightweight toolkit for managing local AI inference servers (llama.cpp / stable-diffusion.cpp) on Linux, with hot-swap model presets, embedding server support, and automatic container orchestration. Includes Web UI, TUI and pi.dev container for software development.
+A lightweight toolkit for managing local AI inference servers (llama.cpp / stable-diffusion.cpp / audio.cpp) on Linux, with hot-swap model presets, embedding server support, and automatic container orchestration. Includes Web UI, TUI and pi.dev container for software development.
 
 ---
 
@@ -18,7 +18,7 @@ A lightweight toolkit for managing local AI inference servers (llama.cpp / stabl
 GlacierFlow runs llama.cpp inside Docker and lets you switch between model presets on the fly — no manual container restarts needed. A background daemon watches your config and applies changes automatically.
 
 **Current features:**
-- llama.cpp / stable-diffusion.cpp inference server managed via Docker Compose
+- llama.cpp / stable-diffusion.cpp / audio.cpp inference server managed via Docker Compose
 - Hot-swap between inference presets (YAML configs)
 - Automatic container restarts when preset changes
 - Preset loading time tracking & status monitoring
@@ -40,7 +40,7 @@ GlacierFlow runs llama.cpp inside Docker and lets you switch between model prese
 - Linux (tested on Arch/Manjaro)
 - Docker & Docker Compose
 - GPU drivers (Vulkan for AMD/NVIDIA)
-- Bash, curl, grep, awk, md5sum, openssl, unzip, and other coreutils
+- Bash, curl, git, grep, awk, md5sum, openssl, unzip, and other coreutils
 
 ---
 
@@ -58,7 +58,7 @@ cd GlacierFlow
 Pick an example preset and copy it to your local presets directory:
 
 ```bash
-cp data/shared/inference_presets/examples/vulkan_8gb_gemma4_e4b_q5.yml \
+cp data/shared/inference_presets/examples/vulkan_8gb_gemma4_e4b_q4.yml \
    data/shared/inference_presets/local/
 ```
 
@@ -80,6 +80,7 @@ GF_HERMES_WEB_PORT=7683
 GF_HERMES_WORKDIR=/path/to/hermes/workdir
 GF_USER_GROUP_ID=1000 # group ID for all containers (defaults to 1000)
 GF_USER_ID=1000 # user ID for all containers (defaults to 1000)
+GF_AUDIO_CPP_ENABLE=0 # set to 1 to auto-clone/build audio.cpp binaries on daemon start (CPU-heavy)
 GF_STABLE_DIFFUSION_ENABLE=0 # set to 1 to auto-download/update stable-diffusion.cpp binaries on daemon start
 GF_VSCODE_AUTOSTART=0 # set to 1 to auto-start VS Code container with the daemon
 GF_VSCODE_WEB_PORT=7684
@@ -125,7 +126,7 @@ Load a preset by name or hash:
 
 ```bash
 cd scripts
-./glacierflow_inference_select_preset vulkan_8gb_gemma4_e4b_q5
+./glacierflow_inference_select_preset vulkan_8gb_gemma4_e4b_q4
 ./glacierflow_inference_select_preset <md5hash>
 ```
 
@@ -173,7 +174,7 @@ The web UI communicates directly with the shared data directory, so it stays in 
 Preset files are Docker Compose YAML snippets that override the base `compose.yml`. They define:
 
 - **command**:inference server arguments (model path, context size, GPU layers, diffusion models, etc.)
-- **devices**: GPU device passthrough (e.g., `/dev/dri/renderD128` for AMD)
+- **devices**: GPU device passthrough (e.g., `/dev/dri` for AMD)
 - **volumes**: Model directory mount paths
 
 Preset names are derived from their filename (`.yml` extension stripped). You can reference them by full name or by MD5 hash.
@@ -283,6 +284,52 @@ When `GF_STABLE_DIFFUSION_ENABLE=1`, the daemon calls `data/stable_diffusion/upd
 - Overwrites any existing installation
 
 The preset YAML files use a Dockerfile at `data/stable_diffusion/docker/Dockerfile` that installs Vulkan drivers and runs `/app/sd-server` as entrypoint. The inference server port (8080) is shared.
+
+---
+
+## Audio.cpp
+
+GlacierFlow supports running [audio.cpp](https://github.com/0xShug0/audio.cpp) for audio model inference, replacing llama.cpp inference server. The daemon can automatically clone and build the source on start.
+
+### Setup
+
+1. **Enable in `.env`** — set `GF_AUDIO_CPP_ENABLE=1` to have the daemon clone/build audio.cpp automatically on each startup:
+
+```env
+GF_AUDIO_CPP_ENABLE=1
+```
+
+The source is cloned from `https://github.com/0xShug0/audio.cpp.git` into `data/audio_cpp/audio.cpp/`. The build is CPU-heavy, so you may prefer to run `data/audio_cpp/update_source.sh` manually with `GF_AUDIO_CPP_ENABLE=0`. The current build version (git commit) is tracked in `data/audio_cpp/last_build.txt` — the build is skipped when the source is unchanged.
+
+2. **Place models** — audio.cpp models (GGUF) go into the `AUDIO_CPP` subdirectory of your models directory (`GF_MODELS_DIRECTORY/AUDIO_CPP/`). Models are available at [audio-cpp/audio.cpp-gguf](https://huggingface.co/audio-cpp/audio.cpp-gguf/tree/main).
+
+3. **Pick a preset** — the example audio.cpp preset lives in `data/shared/inference_presets/examples/`. Copy it to your local directory:
+
+```bash
+cp data/shared/inference_presets/examples/vulkan_8gb_audio_cpp.yml \
+   data/shared/inference_presets/local/
+```
+
+Select it as usual via the preset switcher or Web UI.
+
+4. **Restart the daemon** — the server will start with the new preset.
+
+### Example Presets
+
+| Preset | Notes |
+|--------|-------|
+| `vulkan_8gb_audio_cpp.yml` | Vulkan backend, web UI enabled (`--ui --ui-management`), single loaded model |
+
+### How It Works
+
+When `GF_AUDIO_CPP_ENABLE=1`, the daemon calls `data/audio_cpp/update_source.sh` during startup. The script:
+- Clones the audio.cpp repo if missing, then pulls the latest source
+- Compares the current git commit against `last_build.txt` and skips the build when unchanged
+- Builds the `audiocpp_server` binary with the Vulkan backend into `data/audio_cpp/audio.cpp/build/linux-vulkan-release/bin/`
+
+The preset is built from a Dockerfile at `data/audio_cpp/docker/Dockerfile` (Ubuntu 26.04 with libgomp and Mesa Vulkan drivers) that runs `/app/audiocpp_server` as entrypoint. The preset mounts the build output to `/app` and the `AUDIO_CPP` models directory to `/app/models`. The inference server port (8080) is shared.
+
+See the [audio.cpp server example docs](https://github.com/0xShug0/audio.cpp/blob/main/examples/docker/server/EXAMPLE.md) for server options.
 
 ---
 
@@ -600,10 +647,11 @@ Access VS Code at `https://localhost:7684` in your browser, or click "VS Code" f
 - [x] **caddy-proxy** - Caddy reverse proxy with SSL/TLS termination and basic auth
 - [x] **vscode** - Web-based code editor (code-server) shared workspace with pi.dev
 - [x] **stable-diffusion** - Image generation server with automatic binary download/update
+- [x] **audio.cpp** - Audio model inference server with automatic source clone/build
 
 ---
 
 ## License
 
 GlacierFlow itself is a collection of custom scripts — no license applies.
-Third-party software (llama.cpp, stable-diffusion.cpp, Docker, pi.dev, llama-benchy, vscode and so on.) is subject to their respective licenses.
+Third-party software (llama.cpp, stable-diffusion.cpp, audio.cpp, Docker, pi.dev, llama-benchy, vscode and so on.) is subject to their respective licenses.

@@ -5,7 +5,7 @@
 services:
   glacierflow-llamacpp:
     devices:
-      - "/dev/dri/renderD128:/dev/dri/renderD128"
+      - "/dev/dri:/dev/dri"
     command: >
       --batch-size 2048
       --ctx-size 131072

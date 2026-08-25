@@ -10,6 +10,7 @@ GF_LOG_STATS=0               #override in .env
 GF_HERMES_AUTOSTART=0        #override in .env
 GF_VSCODE_AUTOSTART=0        #override in .env
 GF_STABLE_DIFFUSION_ENABLE=0 #override in .env
+GF_AUDIO_CPP_ENABLE=0        #override in .env
 
 lastPerformanceLogLine=""
 
@@ -78,6 +79,17 @@ prep_stable_diffusion_binaries() {
 		echo "Updating StableDiffusion.cpp binaries..."
 		cd $rootScriptDirectory
 		cd "../data/stable_diffusion/"
+		./update_source.sh
+		cd $rootScriptDirectory
+	fi
+}
+
+prep_audio_cpp_binaries() {
+	if [[ $GF_AUDIO_CPP_ENABLE -eq 1 ]]; then
+		echo "Updating audio.cpp binaries..."
+		cd $rootScriptDirectory
+		cd "../data/audio_cpp/"
+		# heavy, personally I run it manually (CPU-heavy build) with GF_AUDIO_CPP_ENABLE set to 0
 		./update_source.sh
 		cd $rootScriptDirectory
 	fi
@@ -271,6 +283,7 @@ run_preflight_checks() {
 	fail_preflight_on_missing_binary cut
 	fail_preflight_on_missing_binary date
 	fail_preflight_on_missing_binary docker
+	fail_preflight_on_missing_binary git
 	fail_preflight_on_missing_binary grep
 	fail_preflight_on_missing_binary md5sum
 	fail_preflight_on_missing_binary openssl
@@ -297,6 +310,7 @@ run_main_service() {
 	run_hermes
 	run_vscode
 	prep_stable_diffusion_binaries
+	prep_audio_cpp_binaries
 	while true; do
 		run_inference_server
 

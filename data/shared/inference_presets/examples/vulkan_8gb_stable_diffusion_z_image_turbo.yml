@@ -25,7 +25,7 @@ services:
       -W 512
     restart: no
     devices:
-      - "/dev/dri/renderD128:/dev/dri/renderD128"
+      - "/dev/dri:/dev/dri"
     deploy:
       resources:
         limits:

@@ -1,5 +1,7 @@
 .env
 .vscode/commands
+data/audio_cpp/audio.cpp
+data/audio_cpp/last_build.txt
 data/hermes
 data/pi_dev/config/agent/auth.json
 data/pi_dev/config/agent/bin

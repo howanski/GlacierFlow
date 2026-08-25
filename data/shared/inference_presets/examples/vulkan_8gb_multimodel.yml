@@ -1,7 +1,7 @@
 services:
   glacierflow-llamacpp:
     devices:
-      - "/dev/dri/renderD128:/dev/dri/renderD128"
+      - "/dev/dri:/dev/dri"
 # This way we define model in ini file instead of here
 # Router mode is experimental and will confuse metrics
 # but it is useful if you need fast model switching
