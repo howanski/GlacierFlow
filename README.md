@@ -299,7 +299,7 @@ GlacierFlow supports running [audio.cpp](https://github.com/0xShug0/audio.cpp) f
 GF_AUDIO_CPP_ENABLE=1
 ```
 
-The source is cloned from `https://github.com/0xShug0/audio.cpp.git` into `data/audio_cpp/audio.cpp/`. The build is CPU-heavy, so you may prefer to run `data/audio_cpp/update_source.sh` manually with `GF_AUDIO_CPP_ENABLE=0`. The current build version (git commit) is tracked in `data/audio_cpp/last_build.txt` — the build is skipped when the source is unchanged.
+The source is cloned from `https://github.com/0xShug0/audio.cpp.git` into `~/.audio.cpp-src` (configurable via `GF_AUDIO_CPP_SRC_DIR`). The build is CPU-heavy, so you may prefer to run `data/audio_cpp/update_source.sh` manually with `GF_AUDIO_CPP_ENABLE=0`. The current build version (git commit) is tracked in `data/audio_cpp/last_build.txt` — the build is skipped when the source is unchanged.
 
 2. **Place models** — audio.cpp models (GGUF) go into the `AUDIO_CPP` subdirectory of your models directory (`GF_MODELS_DIRECTORY/AUDIO_CPP/`). Models are available at [audio-cpp/audio.cpp-gguf](https://huggingface.co/audio-cpp/audio.cpp-gguf/tree/main).
 
@@ -325,7 +325,7 @@ Select it as usual via the preset switcher or Web UI.
 When `GF_AUDIO_CPP_ENABLE=1`, the daemon calls `data/audio_cpp/update_source.sh` during startup. The script:
 - Clones the audio.cpp repo if missing, then pulls the latest source
 - Compares the current git commit against `last_build.txt` and skips the build when unchanged
-- Builds the `audiocpp_server` binary with the Vulkan backend into `data/audio_cpp/audio.cpp/build/linux-vulkan-release/bin/`
+- Builds the `audiocpp_cli` and `audiocpp_server` binaries with the Vulkan backend and copies them into `data/audio_cpp/build/bin/`
 
 The preset is built from a Dockerfile at `data/audio_cpp/docker/Dockerfile` (Ubuntu 26.04 with libgomp and Mesa Vulkan drivers) that runs `/app/audiocpp_server` as entrypoint. The preset mounts the build output to `/app` and the `AUDIO_CPP` models directory to `/app/models`. The inference server port (8080) is shared.
 

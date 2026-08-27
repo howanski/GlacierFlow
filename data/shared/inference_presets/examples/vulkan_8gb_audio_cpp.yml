@@ -6,7 +6,7 @@ services:
       dockerfile: ../../data/audio_cpp/docker/Dockerfile
     container_name: glacierflow-llamacpp
     volumes:
-      - ./../../data/audio_cpp/audio.cpp/build/linux-vulkan-release/bin:/app:rw
+      - ./../../data/audio_cpp/build/bin:/app:rw
       - ${GF_MODELS_DIRECTORY:-./../../data/models}/AUDIO_CPP:/app/models:rw
     command: >
       --backend vulkan
