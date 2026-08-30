@@ -4,26 +4,72 @@ GF_SCRIPTS_DIR="/pi_dev_scripts/builtin"
 GF_SKETCH_FILE="/home/pi_dev/workdir/GF_SKETCH.md"
 GF_TODO_FILE="/home/pi_dev/workdir/GF_TODO.md"
 
+GF_PI_DEFAULT_MODEL_FILE="/home/pi_dev/.default_model"
+GF_PI_MODELS=(
+	glacierflow-coder-feather
+	glacierflow-coder-light
+	glacierflow-coder-default
+	glacierflow-coder-heavy
+	glacierflow-coder-thinking-feather
+	glacierflow-coder-thinking-light
+	glacierflow-coder-thinking-default
+	glacierflow-coder-thinking-heavy
+)
+GF_PI_DEFAULT_MODEL="glacierflow-coder-thinking-default"
+
 cd /home/pi_dev/workdir
+
+if [ -f "$GF_PI_DEFAULT_MODEL_FILE" ]; then
+	savedModel=$(tr -d '[:space:]' < "$GF_PI_DEFAULT_MODEL_FILE")
+	for m in "${GF_PI_MODELS[@]}"; do
+		if [ "$m" = "$savedModel" ]; then
+			GF_PI_DEFAULT_MODEL=$savedModel
+			break
+		fi
+	done
+fi
 
 run_bash() {
 	bash
 }
 
 run_pi() {
-	pi
+	pi --model "$(get_default_model)"
 }
 
 run_pi_select() {
-	pi -r
+	pi --model "$(get_default_model)" -r
 }
 
 run_pi_continue() {
-	pi -c
+	pi --model "$(get_default_model)" -c
 }
 
 run_pi_ephemeral() {
-	pi --no-session
+	pi --model "$(get_default_model)" --no-session
+}
+
+get_default_model() {
+	echo "$GF_PI_DEFAULT_MODEL"
+}
+
+set_default_model() {
+	if [ -z "$1" ]; then
+		echo "ERROR: empty model name"
+		return 1
+	fi
+	local known
+	for known in "${GF_PI_MODELS[@]}"; do
+		if [ "$known" = "$1" ]; then
+			break
+		fi
+	done
+	if [ "$known" != "$1" ]; then
+		echo "ERROR: unknown model: $1"
+		return 1
+	fi
+	GF_PI_DEFAULT_MODEL=$1
+	echo "$GF_PI_DEFAULT_MODEL" > "$GF_PI_DEFAULT_MODEL_FILE"
 }
 
 automation_menu() {
@@ -31,6 +77,8 @@ automation_menu() {
 		clear
 		echo ""
 		echo "You're in a pi.dev box automation menu!"
+		echo ""
+		echo "Default model: $(get_default_model)"
 		echo ""
 		echo "Select action:"
 		echo ""
@@ -45,6 +93,7 @@ automation_menu() {
 			echo "[C] Run automatic development based on TODO file with internal critic"
 		fi
 		echo ""
+		echo "[M] Change default model"
 		echo "[X] back to main menu"
 		echo ""
 		read -p "Selected action: " actionToRun
@@ -89,6 +138,10 @@ automation_menu() {
 				roundNumber=$((roundNumber + 1))
 			done
 			;;
+		m | M)
+			clear
+			default_model_selection
+			;;
 		*)
 			echo ""
 			;;
@@ -102,7 +155,7 @@ run_pi_noninteractive_with_script() {
 	if [ -f "$fullScriptPath" ]; then
 		local scriptContent=$(cat "$fullScriptPath")
 		echo "Running script $scriptName..."
-		pi -p "$scriptContent"
+		pi --model "$(get_default_model)" -p "$scriptContent"
 	else
 		echo "ERROR: $fullScriptPath NOT FOUND"
 		sleep 5
@@ -115,10 +168,38 @@ run_pi_interactive_with_script() {
 	if [ -f "$fullScriptPath" ]; then
 		local scriptContent=$(cat "$fullScriptPath")
 		echo "Starting script..."
-		pi "$scriptContent"
+		pi --model "$(get_default_model)" "$scriptContent"
 	else
 		echo "ERROR: $fullScriptPath NOT FOUND"
 		sleep 5
+	fi
+}
+
+default_model_selection() {
+	clear
+	echo "Select default model: "
+	echo ""
+	local i=1
+	local printedThinking=0
+	for model in "${GF_PI_MODELS[@]}"; do
+		if [[ "$model" == *"-thinking-"* ]] && [ "$printedThinking" -eq 0 ]; then
+			echo ""
+			printedThinking=1
+		fi
+		local marker=" "
+		if [ "$model" = "$(get_default_model)" ]; then
+			marker="*"
+		fi
+		echo "[$i]$marker $model"
+		i=$((i + 1))
+	done
+	echo ""
+	read -p "Selected model: " modelToSet
+	if [[ "$modelToSet" =~ ^[0-9]+$ ]] && [ "$modelToSet" -ge 1 ] && [ "$modelToSet" -le "${#GF_PI_MODELS[@]}" ]; then
+		set_default_model "${GF_PI_MODELS[$((modelToSet - 1))]}"
+	else
+		echo "$modelToSet is not an option, aborting..."
+		sleep 2
 	fi
 }
 
@@ -128,6 +209,8 @@ kickoff_menu() {
 		echo ""
 		echo "You're in a pi.dev box kick-off menu!"
 		echo ""
+		echo "Default model: $(get_default_model)"
+		echo ""
 		echo "Select action:"
 		echo ""
 		echo "[C] Start Code Review"
@@ -135,6 +218,7 @@ kickoff_menu() {
 		echo "[I] Propose Improvements"
 		echo "[R] Update Readme"
 		echo ""
+		echo "[M] Change default model"
 		echo "[X] back to main menu"
 		echo ""
 		read -p "Selected action: " actionToRun
@@ -158,6 +242,10 @@ kickoff_menu() {
 			clear
 			run_pi_interactive_with_script "init_readme"
 			;;
+		m | M)
+			clear
+			default_model_selection
+			;;
 		*)
 			echo ""
 			;;
@@ -174,7 +262,7 @@ pi_update() {
 	else
 		echo "installing pi..."
 		curl -fsSL https://pi.dev/install.sh | sh
-		# skipping extensions installation 
+		# skipping extensions installation
 		# (no enforcement, let user install extensions, they survive image rebuild)
 	fi
 }
@@ -185,6 +273,8 @@ run_main() {
 		clear
 		echo ""
 		echo "You're in a pi.dev box!"
+		echo ""
+		echo "Default model: $(get_default_model)"
 		echo ""
 		echo "Select action:"
 		echo "[N] New session"
@@ -200,6 +290,7 @@ run_main() {
 		echo "[K] New session with builtin conversation-starter"
 		echo "[B] Bash"
 		echo ""
+		echo "[M] Change default model"
 		echo "[X] exit / detach from container"
 		echo ""
 		read -p "Selected action: " actionToRun
@@ -233,9 +324,13 @@ run_main() {
 			clear
 			automation_menu
 			;;
-		k | k)
+		k | K)
 			clear
 			kickoff_menu
+			;;
+		m | M)
+			clear
+			default_model_selection
 			;;
 		*)
 			echo ""

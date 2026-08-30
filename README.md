@@ -23,7 +23,7 @@ GlacierFlow runs llama.cpp inside Docker and lets you switch between model prese
 - Automatic container restarts when preset changes
 - Preset loading time tracking & status monitoring
 - Example configs for various GPU setups
-- Docker-based code generation assistant (pi.dev) with automation workflows
+- Docker-based code generation assistant (pi.dev) with automation workflows and selectable default model
 - Hermes AI agent container with web dashboard and kanban task support
 - Multi-model benchmarking suite
 - GPU layers autotune — binary search for optimal VRAM offload with stability testing and quick benchmark
@@ -460,7 +460,14 @@ GlacierFlow ships with a Dockerized [pi.dev](https://pi.dev) development environ
       "api": "openai-completions",
       "apiKey": "none",
       "models": [
-        { "id": "glacierflow-llamacpp" }
+        { "id": "glacierflow-coder-feather" },
+        { "id": "glacierflow-coder-light" },
+        { "id": "glacierflow-coder-default" },
+        { "id": "glacierflow-coder-heavy" },
+        { "id": "glacierflow-coder-thinking-feather", "reasoning": true, "thinkingLevelMap": { "off": null } },
+        { "id": "glacierflow-coder-thinking-light", "reasoning": true, "thinkingLevelMap": { "off": null } },
+        { "id": "glacierflow-coder-thinking-default", "reasoning": true, "thinkingLevelMap": { "off": null } },
+        { "id": "glacierflow-coder-thinking-heavy", "reasoning": true, "thinkingLevelMap": { "off": null } }
       ]
     }
   }
@@ -470,6 +477,10 @@ GlacierFlow ships with a Dockerized [pi.dev](https://pi.dev) development environ
 > **Note**: By default this points through the FIFO proxy (`glacierflow-proxy`) so chat requests are serialized. If you bypass the proxy, change the URL to `http://glacierflow-llamacpp:8080/v1`.
 
 2. **Set your inference preset** — the pi.dev container by default uses the model you configured with `glacierflow_inference_select_preset` script.
+
+### Default Model
+
+The `start` script tracks a default model (default: `glacierflow-coder-thinking-default`) and passes it to all pi invocations via `--model`. The current default is shown at the top of every menu, and you can change it with the `[M]` option (main, automation and kick-off menus). The selection is persisted to `~/.default_model` inside the container and restored on next start (unknown/stale values fall back to the built-in default).
 
 ### Usage
 
@@ -503,9 +514,11 @@ Once inside, the `start` script provides an interactive menu with several modes:
 | `N` | New session |
 | `C` | Continue last session |
 | `S` | Select session |
+| `E` | Ephemeral session (not saved) |
 | `A` | **Automation** - AI-driven development workflow |
-| `K` | Kick-off menu (Code Review, Improvements, Readme) |
+| `K` | **Kick-off** menu (Code Review, Improvements, Readme) |
 | `B` | Bash shell |
+| `M` | Change default model |
 | `X` | Exit / detach |
 
 #### Automation Mode
@@ -520,8 +533,22 @@ The automation menu provides AI-driven development workflows:
 | `T` | Prepare/update TODO file (exact implementation steps) |
 | `R` | Run automatic development from TODO |
 | `C` | Run automatic development with internal critic loop |
+| `M` | Change default model |
+| `X` | Back to main menu |
 
 The automation scripts (`data/pi_dev/scripts/builtin/`) guide the AI through structured development: planning, coding, and critiquing iterations.
+
+#### Kick-off Mode
+
+The kick-off menu provides ready-made conversation starters for a fresh session:
+
+| Key | Action |
+|-----|--------|
+| `C` | Start Code Review |
+| `I` | Propose Improvements |
+| `R` | Update Readme |
+| `M` | Change default model |
+| `X` | Back to main menu |
 
 ### Container Details
 
