@@ -23,7 +23,7 @@ GlacierFlow runs llama.cpp inside Docker and lets you switch between model prese
 - Automatic container restarts when preset changes
 - Preset loading time tracking & status monitoring
 - Example configs for various GPU setups
-- Docker-based code generation assistant (pi.dev) with automation workflows and selectable default model
+- Docker-based code generation assistant (pi.dev)
 - Hermes AI agent container with web dashboard and kanban task support
 - Multi-model benchmarking suite
 - GPU layers autotune — binary search for optimal VRAM offload with stability testing and quick benchmark
@@ -480,7 +480,7 @@ GlacierFlow ships with a Dockerized [pi.dev](https://pi.dev) development environ
 
 ### Default Model
 
-The `start` script tracks a default model (default: `glacierflow-coder-thinking-default`) and passes it to all pi invocations via `--model`. The current default is shown at the top of every menu, and you can change it with the `[M]` option (main, automation and kick-off menus). The selection is persisted to `~/.default_model` inside the container and restored on next start (unknown/stale values fall back to the built-in default).
+The `start` script tracks a default model (default: `glacierflow-coder-thinking-default`) and passes it to all pi invocations via `--model`. The current default is shown at the top of every menu, and you can change it with the `[M]` option (main and kick-off menus). The selection is persisted to `~/.default_model` inside the container and restored on next start (unknown/stale values fall back to the built-in default).
 
 ### Usage
 
@@ -515,28 +515,10 @@ Once inside, the `start` script provides an interactive menu with several modes:
 | `C` | Continue last session |
 | `S` | Select session |
 | `E` | Ephemeral session (not saved) |
-| `A` | **Automation** - AI-driven development workflow |
 | `K` | **Kick-off** menu (Code Review, Improvements, Readme) |
 | `B` | Bash shell |
 | `M` | Change default model |
 | `X` | Exit / detach |
-
-#### Automation Mode
-
-The automation menu provides AI-driven development workflows:
-
-| Key | Action |
-|-----|--------|
-| `S` | Prepare/update SKETCH file (high-level goals) |
-| `P` | Convert SKETCH → TODO (non-interactive planner) |
-| `Q` | Convert SKETCH → TODO (interactive planner) |
-| `T` | Prepare/update TODO file (exact implementation steps) |
-| `R` | Run automatic development from TODO |
-| `C` | Run automatic development with internal critic loop |
-| `M` | Change default model |
-| `X` | Back to main menu |
-
-The automation scripts (`data/pi_dev/scripts/builtin/`) guide the AI through structured development: planning, coding, and critiquing iterations.
 
 #### Kick-off Mode
 
@@ -560,7 +542,7 @@ The kick-off menu provides ready-made conversation starters for a fresh session:
 - **Volume mounts**:
   - Project root → `/pi_dev` (read-only)
   - Config → `~/.pi` (read-write)
-  - Scripts → `/pi_dev_scripts` (read-write, for builtin automation scripts)
+  - Scripts → `/pi_dev_scripts` (read-write, for builtin conversation-starter scripts)
   - tmux config → `~/.tmux.conf` (read-only)
   - Workdir → configurable via `GF_PI_DEV_WORKDIR` env var (read-write)
 
@@ -659,22 +641,6 @@ Access VS Code at `https://localhost:7684` in your browser, or click "VS Code" f
 - [GitHub](https://github.com/howanski/GlacierFlow)
 - [Codeberg](https://codeberg.org/howanski/GlacierFlow)
 - [Gitea (intranet)](https://gitea.howan.ski/howanski/GlacierFlow)
-
----
-
-## Roadmap
-
-- [x] **coder** - Code generation assistant integration
-- [x] **coder automation** - Interactive menu, SKETCH→TODO pipeline, auto-programmer, auto-critic
-- [x] **hermes** - Hermes AI agent container with dashboard and kanban support
-- [x] **webui** - Web-based UI for preset management
-- [x] **embeddings** - llama.cpp embedding server
-- [x] **fifo-proxy** - Go-based FIFO proxy for serializing chat requests
-- [x] **stats-viewer** - Web UI with Chart.js-based performance metrics visualization
-- [x] **caddy-proxy** - Caddy reverse proxy with SSL/TLS termination and basic auth
-- [x] **vscode** - Web-based code editor (code-server) shared workspace with pi.dev
-- [x] **stable-diffusion** - Image generation server with automatic binary download/update
-- [x] **audio.cpp** - Audio model inference server with automatic source clone/build
 
 ---
 
