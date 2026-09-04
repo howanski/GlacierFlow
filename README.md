@@ -217,6 +217,7 @@ The runner:
 | `c4.json` | Python | Add token-bucket rate limiting to an API gateway |
 | `c5.json` | TypeScript | Refactor a checkout service into a typed module |
 | `c6.json` | Go | Fix a data race in a shared counter |
+| `c7.json` | HTML,CSS,Javascript | Create chart based on pasted yml data |
 
 ---
 

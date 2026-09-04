@@ -1,8 +1,239 @@
 {
     "messages": [
         {
+            "role": "developer",
+            "content": "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.\n\nAvailable tools:\n- read: Read file contents\n- bash: Execute bash commands (ls, grep, find, etc.)\n- edit: Make precise file edits with exact text replacement, including multiple disjoint edits in one call\n- write: Create or overwrite files\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n\nGuidelines:\n- Use bash for file operations like ls, rg, find\n- Use read to examine files instead of cat or sed.\n- You can inspect PI_* environment variables for current model and session details.\n- Use edit for precise changes (edits[].oldText must match exactly)\n- When changing multiple separate locations in one file, use one edit call with multiple entries in edits[] instead of multiple edit calls\n- Each edits[].oldText is matched against the original file, not after earlier edits are applied. Do not emit overlapping or nested edits. Merge nearby changes into one edit.\n- Keep edits[].oldText as small as possible while still being unique in the file. Do not pad with large unchanged regions.\n- Use write only for new files or complete rewrites.\n- Be concise in your responses\n- Show file paths clearly when working with files\n\nPi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: /home/pi_dev/.local/lib/node_modules/@earendil-works/pi-coding-agent/README.md\n- Additional docs: /home/pi_dev/.local/lib/node_modules/@earendil-works/pi-coding-agent/docs\n- Examples: /home/pi_dev/.local/lib/node_modules/@earendil-works/pi-coding-agent/examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\nCurrent working directory: /home/pi_dev/workdir"
+        },
+        {
             "role": "user",
             "content": "I have tables:\n```\ndepartments(DepartmentId, DepartmentName)\nstudents(DepartmentId, StudentId, StudentName)\n```\nWrite a MySQL query to list all students in the Computer Science department."
+        }
+    ],
+    "tools": [
+        {
+            "type": "function",
+            "function": {
+                "name": "read",
+                "description": "Read the contents of a file. Supports text files and images (jpg, png, gif, webp, bmp). Images are sent as attachments. For text files, output is truncated to 2000 lines or 50KB (whichever is hit first). Use offset/limit for large files. When you need the full file, continue with offset until complete.",
+                "parameters": {
+                    "type": "object",
+                    "required": [
+                        "path"
+                    ],
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Path to the file to read (relative or absolute)"
+                        },
+                        "offset": {
+                            "type": "number",
+                            "description": "Line number to start reading from (1-indexed)"
+                        },
+                        "limit": {
+                            "type": "number",
+                            "description": "Maximum number of lines to read"
+                        }
+                    }
+                },
+                "strict": false
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "bash",
+                "description": "Execute a bash command in the current working directory. Returns stdout and stderr. Output is truncated to last 2000 lines or 50KB (whichever is hit first). If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.",
+                "parameters": {
+                    "type": "object",
+                    "required": [
+                        "command"
+                    ],
+                    "properties": {
+                        "command": {
+                            "type": "string",
+                            "description": "Shell command to execute"
+                        },
+                        "timeout": {
+                            "type": "number",
+                            "description": "Timeout in seconds (optional, no default timeout)"
+                        }
+                    }
+                },
+                "strict": false
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "edit",
+                "description": "Edit a single file using exact text replacement. Every edits[].oldText must match a unique, non-overlapping region of the original file. If two changes affect the same block or nearby lines, merge them into one edit instead of emitting overlapping edits. Do not include large unchanged regions just to connect distant changes.",
+                "parameters": {
+                    "type": "object",
+                    "required": [
+                        "path",
+                        "edits"
+                    ],
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Path to the file to edit (relative or absolute)"
+                        },
+                        "edits": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "required": [
+                                    "oldText",
+                                    "newText"
+                                ],
+                                "properties": {
+                                    "oldText": {
+                                        "type": "string",
+                                        "description": "Exact text for one targeted replacement. It must be unique in the original file and must not overlap with any other edits[].oldText in the same call."
+                                    },
+                                    "newText": {
+                                        "type": "string",
+                                        "description": "Replacement text for this targeted edit."
+                                    }
+                                }
+                            },
+                            "description": "One or more targeted replacements. Each edit is matched against the original file, not incrementally. Do not include overlapping or nested edits. If two changes touch the same block or nearby lines, merge them into one edit instead."
+                        }
+                    }
+                },
+                "strict": false
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "write",
+                "description": "Write content to a file. Creates the file if it doesn't exist, overwrites if it does. Automatically creates parent directories.",
+                "parameters": {
+                    "type": "object",
+                    "required": [
+                        "path",
+                        "content"
+                    ],
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Path to the file to write (relative or absolute)"
+                        },
+                        "content": {
+                            "type": "string",
+                            "description": "Content to write to the file"
+                        }
+                    }
+                },
+                "strict": false
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "goal_complete",
+                "description": "Mark an active /goal complete only when the latest effective Goal contract explicitly says Goal mode is active, supplies the matching current goal_id, and every requirement is verified. Tool visibility alone does not activate Goal mode. Never call for ordinary work, partial progress, blockers, failures, or unverified work.",
+                "parameters": {
+                    "type": "object",
+                    "required": [
+                        "goal_id",
+                        "summary"
+                    ],
+                    "properties": {
+                        "goal_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128,
+                            "description": "The exact goal_id shown in the current active /goal prompt. Used only to reject stale completion calls from older turns."
+                        },
+                        "summary": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 4000,
+                            "description": "State what was completed and what evidence verified it. Do not use this tool to report partial progress, blockers, failures, or remaining work."
+                        }
+                    }
+                },
+                "strict": false
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "goal_blocked",
+                "description": "Stop an active /goal only when the latest effective Goal contract explicitly says Goal mode is active, supplies the matching current goal_id, and the same evidenced external blocker recurred for at least three consecutive Goal turns. Tool visibility alone does not activate Goal mode. Never call for ordinary clarification, uncertainty, incomplete work, or recoverable failures.",
+                "parameters": {
+                    "type": "object",
+                    "required": [
+                        "goal_id",
+                        "reason",
+                        "evidence",
+                        "repeated_turns"
+                    ],
+                    "properties": {
+                        "goal_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128,
+                            "description": "The exact goal_id shown in the current active /goal prompt."
+                        },
+                        "reason": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1000,
+                            "description": "The specific user or external action required to unblock the goal."
+                        },
+                        "evidence": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 4000,
+                            "description": "Concrete evidence from the repeated attempts that proves the impasse."
+                        },
+                        "repeated_turns": {
+                            "type": "integer",
+                            "minimum": 3,
+                            "description": "Number of separate turns spent trying to resolve this same blocker."
+                        }
+                    }
+                },
+                "strict": false
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "goal_wait",
+                "description": "Keep an active /goal quiet only when the latest effective Goal contract explicitly says Goal mode is active, supplies the matching current goal_id, and progress depends on an arranged external wake event or one safety deadline. Tool visibility alone does not activate Goal mode. Call goal_wait alone. Requests below 10000ms are clamped to 10000ms. Never call for ordinary unfinished work.",
+                "parameters": {
+                    "type": "object",
+                    "required": [
+                        "goal_id",
+                        "reason"
+                    ],
+                    "properties": {
+                        "goal_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128,
+                            "description": "The exact goal_id shown in the current active /goal prompt."
+                        },
+                        "reason": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1000,
+                            "description": "Why the goal is waiting and which external event should wake it."
+                        },
+                        "resume_after_ms": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 2147483647,
+                            "description": "Optional safety deadline in milliseconds that requests one continuation if no wake message arrives. Values below 10000 are accepted but clamped to 10000."
+                        }
+                    }
+                },
+                "strict": false
+            }
         }
     ],
     "max_tokens": 600,
