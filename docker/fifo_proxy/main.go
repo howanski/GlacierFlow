@@ -188,32 +188,55 @@ func buildBackendRequest(backend *url.URL, r *http.Request) (*http.Request, []by
 
 func dumpRequestResponse(requestMethod, requestPath string, requestBody, responseBody []byte) {
 	timestamp := time.Now().Format("2006_01_02_15_04_05")
-	filename := fmt.Sprintf("dumps/%s.json", timestamp)
-
-	data := map[string]interface{}{
-		"requestMethod": requestMethod,
-		"requestPath":   requestPath,
-		"request":       string(requestBody),
-		"response":      string(responseBody),
-	}
-
-	jsonBytes, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		log.Printf("dump marshal error: %v", err)
-		return
-	}
+	prefix := fmt.Sprintf("dumps/%s", timestamp)
 
 	if err := os.MkdirAll("dumps", 0755); err != nil {
 		log.Printf("dump mkdir error: %v", err)
 		return
 	}
 
-	if err := os.WriteFile(filename, jsonBytes, 0644); err != nil {
+	// Request file contains the exact request body, unmodified.
+	if err := os.WriteFile(prefix+"_request.json", requestBody, 0644); err != nil {
 		log.Printf("dump write error: %v", err)
 		return
 	}
 
-	log.Printf("dumped request/response to %s", filename)
+	// Response file contains the full response body: pretty-printed when it
+	// is valid JSON, raw bytes otherwise (e.g. SSE event streams).
+	if err := os.WriteFile(prefix+"_response.json", formatBody(responseBody), 0644); err != nil {
+		log.Printf("dump write error: %v", err)
+		return
+	}
+
+	details, err := json.MarshalIndent(map[string]string{
+		"requestMethod": requestMethod,
+		"requestPath":   requestPath,
+	}, "", "  ")
+	if err != nil {
+		log.Printf("dump marshal error: %v", err)
+		return
+	}
+
+	if err := os.WriteFile(prefix+"_details.json", details, 0644); err != nil {
+		log.Printf("dump write error: %v", err)
+		return
+	}
+
+	log.Printf("dumped request/response to %s_request.json, %s_response.json, %s_details.json", prefix, prefix, prefix)
+}
+
+// formatBody returns the body pretty-printed when it is valid JSON,
+// otherwise the original bytes unchanged.
+func formatBody(body []byte) []byte {
+	trimmed := bytes.TrimSpace(body)
+	if len(trimmed) == 0 || !json.Valid(trimmed) {
+		return body
+	}
+	var pretty bytes.Buffer
+	if err := json.Indent(&pretty, trimmed, "", "  "); err != nil {
+		return body
+	}
+	return pretty.Bytes()
 }
 
 func main() {

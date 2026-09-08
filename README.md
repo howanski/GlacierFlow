@@ -375,14 +375,16 @@ The proxy can record request and response pairs to JSON files for debugging and 
 GF_PROXY_DUMP_REQUESTS=1
 ```
 
-When enabled, each request/response pair is dumped to `docker/fifo_proxy/dumps/<timestamp>.json` with the following structure:
+When enabled, each request/response pair is dumped to `docker/fifo_proxy/dumps/` as three files sharing a common `<timestamp>` prefix (format: `YYYY_MM_DD_HH_MM_SS`):
+
+- `<timestamp>_request.json` — the exact request body, unmodified
+- `<timestamp>_response.json` — the full response body, pretty-printed when it is valid JSON, raw bytes otherwise (e.g. SSE event streams)
+- `<timestamp>_details.json` — request method and path:
 
 ```json
 {
   "requestMethod": "POST",
-  "requestPath": "/v1/chat/completions",
-  "request": "...",
-  "response": "..."
+  "requestPath": "/v1/chat/completions"
 }
 ```
 
