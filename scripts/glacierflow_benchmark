@@ -165,6 +165,7 @@ run_benchmark_for_model() {
 		echo " -------> average TPS: $mean"
 		echo ""
 		benchmark_result_save "$modelHash" "$benchmarkName" "$mean"
+		sleep 3
 	fi
 }
 
