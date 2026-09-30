@@ -1,7 +1,7 @@
 services:
   glacierflow-caddy:
     container_name: "glacierflow-caddy"
-    image: caddy:2.11.2
+    image: caddy:2.11.4
     entrypoint: ["/entrypoint.sh"]
     environment:
       - GF_HTTP_USER=${GF_HTTP_USER:-glacierflow}

@@ -5,11 +5,15 @@ data/audio_cpp/last_build.txt
 data/hermes
 data/pi_dev/config/agent/auth.json
 data/pi_dev/config/agent/bin
+data/pi_dev/config/agent/install/current-version
+data/pi_dev/config/agent/install/managed-install.json
+data/pi_dev/config/agent/install/releases/*
 data/pi_dev/config/agent/models-store.json
 data/pi_dev/config/agent/pi-goal.json
 data/pi_dev/config/agent/pi-vcc-config.json
 data/pi_dev/config/agent/sessions
 data/pi_dev/config/agent/settings.json
+data/pi_dev/config/agent/web-search-cache/*
 data/shared/benchmarks/*.txt
 data/shared/inference_config.yml
 data/shared/inference_loading_times.txt

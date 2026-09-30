@@ -643,7 +643,7 @@ Access VS Code at `https://localhost:7684` in your browser, or click "VS Code" f
 
 - [GitHub](https://github.com/howanski/GlacierFlow)
 - [Codeberg](https://codeberg.org/howanski/GlacierFlow)
-- [Gitea (intranet)](https://gitea.howan.ski/howanski/GlacierFlow)
+- [Forgejo (intranet)](https://forgejo.howan.ski/howanski/GlacierFlow)
 
 ---
 

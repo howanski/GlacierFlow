@@ -144,7 +144,7 @@ run_context_stability_test() {
 	return 0
 }
 
-# Quick benchmark: uses curl with c1.json preset, BENCHMARK_PASSES passes, average TPS.
+# Quick benchmark: uses curl with c3.json preset, BENCHMARK_PASSES passes, average TPS.
 # Returns 0 on success, 1 on failure. Sets speedAchieved.
 run_quick_benchmark() {
 	local layers=$1
@@ -376,7 +376,7 @@ while true; do
 		;;
 	2)
 		tty_clear
-		local passesAmount=3
+		passesAmount=3
 		read -p "How many passes on each benchmark? [3]: " passesAmount
 		if [[ -z "$passesAmount" ]]; then
 			BENCHMARK_PASSES=3
