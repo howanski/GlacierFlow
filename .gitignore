@@ -40,3 +40,4 @@ docker/llama_cpp/compose.override.yml
 docker/llama_embeddings/compose.override.yml
 docker/webui/main.md5
 docker/webui/webui
+scripts/gf_benchy.log

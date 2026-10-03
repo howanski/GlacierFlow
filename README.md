@@ -219,6 +219,19 @@ The runner:
 | `c6.json` | Go | Fix a data race in a shared counter |
 | `c7.json` | HTML,CSS,Javascript | Create chart based on pasted yml data |
 
+### gf_benchy
+
+`gf_benchy` is a generic, prompt-agnostic benchmark that measures raw prompt-processing (PP) and token-generation (TG) throughput at various KV-cache depths. It runs `llama-benchy` (via `uvx`) against the currently loaded model, filling the context to a chosen depth (2k / 32k / 132k) and reporting mean TPS. Results are cached per model hash and depth, so presets can be benchmarked one by one without re-running completed ones.
+
+```bash
+cd scripts
+./gf_benchy
+```
+
+The interactive menu lets you run a single depth, run across all presets, list results, or switch presets.
+
+> **Note:** Because the test texts are generic prose (not real coding tasks), `gf_benchy` is good for pinpointing the best general model configuration, but it is **not** a reliable way to tune MTP (multi-token prediction) settings. For MTP tuning, prefer `glacierflow_benchmark`, which uses real-life coding tasks.
+
 ---
 
 ## GPU Layers Autotune
