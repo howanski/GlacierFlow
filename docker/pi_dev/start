@@ -18,7 +18,7 @@ GF_PI_DEFAULT_MODEL="glacierflow-coder-thinking-default"
 cd /home/pi_dev/workdir
 
 if [ -f "$GF_PI_DEFAULT_MODEL_FILE" ]; then
-	savedModel=$(tr -d '[:space:]' < "$GF_PI_DEFAULT_MODEL_FILE")
+	savedModel=$(tr -d '[:space:]' <"$GF_PI_DEFAULT_MODEL_FILE")
 	for m in "${GF_PI_MODELS[@]}"; do
 		if [ "$m" = "$savedModel" ]; then
 			GF_PI_DEFAULT_MODEL=$savedModel
@@ -47,6 +47,10 @@ run_pi_ephemeral() {
 	pi --model "$(get_default_model)" --no-session
 }
 
+run_pi_codemode() {
+	pi --model "$(get_default_model)" --tools read,bash,edit,write,codemode
+}
+
 get_default_model() {
 	echo "$GF_PI_DEFAULT_MODEL"
 }
@@ -67,7 +71,7 @@ set_default_model() {
 		return 1
 	fi
 	GF_PI_DEFAULT_MODEL=$1
-	echo "$GF_PI_DEFAULT_MODEL" > "$GF_PI_DEFAULT_MODEL_FILE"
+	echo "$GF_PI_DEFAULT_MODEL" >"$GF_PI_DEFAULT_MODEL_FILE"
 }
 
 run_pi_interactive_with_script() {
@@ -189,6 +193,7 @@ run_main() {
 		echo "[C] Continue last session"
 		echo "[S] Select session"
 		echo "[E] Ephemeral (no session)"
+		echo "[D] New session with codemode enabled"
 		# TODO pi --mode rpc could be exposed but that would be not too pragmatic
 		# better run `docker exec -it "glacierflow-pi-dev" pi $@` from the outside?
 		# or additional binary bridge like REST <-> bridge <-> pi
@@ -218,6 +223,10 @@ run_main() {
 		e | E)
 			clear
 			run_pi_ephemeral
+			;;
+		d | D)
+			clear
+			run_pi_codemode
 			;;
 		s | S)
 			clear

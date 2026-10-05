@@ -511,43 +511,6 @@ cd scripts
 ./glacierflow_pi_code
 ```
 
-This presents an interactive menu:
-
-| Key | Action |
-|-----|--------|
-| `U` | Start the pi.dev container |
-| `D` | Stop the container |
-| `A` | Attach to the running container |
-| `R` | Rebuild / hard reset the container |
-| `X` | Exit |
-
-### Inside the Container
-
-Once inside, the `start` script provides an interactive menu with several modes:
-
-| Key | Action |
-|-----|--------|
-| `N` | New session |
-| `C` | Continue last session |
-| `S` | Select session |
-| `E` | Ephemeral session (not saved) |
-| `K` | **Kick-off** menu (Code Review, Improvements, Readme) |
-| `B` | Bash shell |
-| `M` | Change default model |
-| `X` | Exit / detach |
-
-#### Kick-off Mode
-
-The kick-off menu provides ready-made conversation starters for a fresh session:
-
-| Key | Action |
-|-----|--------|
-| `C` | Start Code Review |
-| `I` | Propose Improvements |
-| `R` | Update Readme |
-| `M` | Change default model |
-| `X` | Back to main menu |
-
 ### Container Details
 
 - **Image**: Alpine-based with bash, curl, ttyd, tmux, git, npm, and vim as basic requirements. Additional packages can be passed via `GF_PI_EXTRA_PACKAGES` .env arg (space-separated list).
