@@ -27,6 +27,7 @@ GlacierFlow runs llama.cpp inside Docker and lets you switch between model prese
 - Hermes AI agent container with web dashboard and kanban task support
 - Multi-model benchmarking suite
 - GPU layers autotune — binary search for optimal VRAM offload with stability testing and quick benchmark
+- MTP preset grid generator — sweep `--spec-draft-n-max` / `--spec-draft-p-min` to generate a 9×9 grid of inference presets
 - Web-based UI for preset management and status monitoring
 - Embedding server (llama.cpp) for vector embeddings, toggleable via override config
 - FIFO proxy for serializing chat requests (prevents stream cut-offs during model hot-swap)
@@ -255,6 +256,31 @@ The script modifies `--gpu-layers` in the compose source file and restarts the i
 - The autotune script works on currently loaded preset and does not support llama's router mode
 - The preset file must contain a `--gpu-layers` argument in one line for the script to work
 
+---
+
+## MTP Preset Grid Generator
+
+`gf_gen_mtp_prob_presets_range` generates a grid of inference presets from a prototype file for sweeping MTP (multi-token prediction) settings. It creates a 9×9 grid by varying:
+
+- `--spec-draft-n-max` from `1` to `9`
+- `--spec-draft-p-min` from `0.1` to `0.9`
+
+Each combination is written as `000_testbed_mtp_<n-max>_prob_<p-min>.yml` next to the prototype file (existing files are overwritten).
+
+```bash
+# With a prototype argument (bare filename or path)
+cd scripts
+./gf_gen_mtp_prob_presets_range preset_to_base_mtp_variations_on.yml
+
+# Without an argument — prompts for the prototype file
+# (default: preset_to_base_mtp_variations_on.yml)
+cd scripts
+./gf_gen_mtp_prob_presets_range
+```
+
+A bare filename is resolved against `data/shared/inference_presets/local`; a path (containing `/`) is used as-is. The prototype must contain both `--spec-draft-n-max` and `--spec-draft-p-min` on non-comment lines, otherwise the script exits with an error.
+
+The generated presets are meant to be benchmarked one by one (e.g. with `glacierflow_benchmark`, which is the recommended tool for MTP tuning) to find the best `n-max` / `p-min` combination for a given model.
 
 ---
 

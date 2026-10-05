@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+#
+# Generate a grid of inference presets from a prototype file, sweeping:
+#   --spec-draft-n-max  $X   (1..9)
+#   --spec-draft-p-min  0.$Y (1..9)
+#
+# Output files: 000_testbed_mtp_$X_prob_$Y.yml (written next to the prototype).
+#
+# Usage:
+#   gf_gen_mtp_prob_presets_range [prototype.yml]
+#
+# If the prototype is not given as the first argument, the script prompts
+# for it (default: preset_to_base_mtp_variations_on.yml). A bare filename is resolved against
+# data/shared/inference_presets/local; a path (containing '/') is used as-is.
+
+set -euo pipefail
+
+# --- locate repo root and presets dir (this script lives in <root>/scripts) ---
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
+ROOT_DIR="$(cd -- "${SCRIPT_DIR}/.." &>/dev/null && pwd)"
+PRESET_DIR="${ROOT_DIR}/data/shared/inference_presets/local"
+
+# --- resolve prototype file ---------------------------------------------------
+if [[ $# -ge 1 ]]; then
+    proto_arg="$1"
+else
+    read -rp "Prototype file name [preset_to_base_mtp_variations_on.yml]: " proto_arg
+    proto_arg="${proto_arg:-preset_to_base_mtp_variations_on.yml}"
+fi
+
+if [[ -f "$proto_arg" ]]; then
+    # given as a path (absolute or relative to CWD)
+    PROTOTYPE="$(cd -- "$(dirname -- "$proto_arg")" &>/dev/null && pwd)/$(basename -- "$proto_arg")"
+elif [[ -f "${PRESET_DIR}/${proto_arg}" ]]; then
+    # bare filename, resolved against the local presets dir
+    PROTOTYPE="${PRESET_DIR}/${proto_arg}"
+else
+    echo "error: prototype file not found: ${proto_arg}" >&2
+    exit 1
+fi
+
+OUT_DIR="$(dirname -- "$PROTOTYPE")"
+
+# --- sanity check: prototype must contain both flags on non-comment lines ----
+for flag in --spec-draft-n-max --spec-draft-p-min; do
+    if ! grep -Eq "^[[:space:]]*${flag}[[:space:]]" "$PROTOTYPE"; then
+        echo "error: '${flag}' not found in ${PROTOTYPE}" >&2
+        exit 1
+    fi
+done
+
+# --- generate the 9x9 grid -----------------------------------------------------
+count=0
+for x in {1..9}; do
+    for y in {1..9}; do
+        out="${OUT_DIR}/000_testbed_mtp_${x}_prob_${y}.yml"
+        sed -E \
+            -e "s/^([[:space:]]*)--spec-draft-n-max[[:space:]]+[0-9]+/\1--spec-draft-n-max ${x}/" \
+            -e "s/^([[:space:]]*)--spec-draft-p-min[[:space:]]+[0-9.]+/\1--spec-draft-p-min 0.${y}/" \
+            "$PROTOTYPE" > "$out"
+        printf '%s %s\n' "$([[ -e "$out" ]] && echo overwrite || echo created)" "$out"
+        count=$((count + 1))
+    done
+done
+
+echo "done: ${count} files in ${OUT_DIR}"
