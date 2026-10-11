@@ -1,0 +1,86 @@
+#!/bin/bash
+# gf_auto_merge_presets
+#
+# Merges INI preset files by simple concatenation (no parsing, no dedup,
+# no validation of INI content).
+#
+# What gets merged is determined solely by GF_AUTO_MERGE_PRESETS in the
+# project's .env file (one level above this script's directory).
+#
+# Format of GF_AUTO_MERGE_PRESETS:
+#   "A+B=C;D+E=F"
+# - Sequences are separated by ';' and executed strictly in order, so the
+#   output of an earlier sequence can be used as input of a later one
+#   (e.g. E in "A+B+C=E;D+E=F" is created by the first sequence).
+# - Within a sequence, inputs are separated by '+' and concatenated in the
+#   given order into the output file named after '='.
+# - Empty or unset variable => nothing is done, exit 0.
+#
+# All files are read from & written to data/shared/inference_presets/local/
+# (relative to this script's location).
+
+source "$(dirname "$0")/gf_common.sh"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PRESETS_DIR="$SCRIPT_DIR/$GF_INFERENCE_PRESETS_DIR_LOCAL"
+ENV_FILE="$SCRIPT_DIR/../.env"
+
+# ── Load .env (the variable's value is the single source of truth) ───────────
+if [ -f "$ENV_FILE" ]; then
+	set -a
+	# shellcheck disable=SC1090
+	source "$ENV_FILE"
+	set +a
+fi
+
+MERGE_SPEC="${GF_AUTO_MERGE_PRESETS:-}"
+
+# Nothing configured → nothing to do
+[ -z "$MERGE_SPEC" ] && exit 0
+
+# The presets directory must exist before anything is read or written
+if [ ! -d "$PRESETS_DIR" ]; then
+	echo "ERROR: presets directory not found: $PRESETS_DIR" >&2
+	exit 1
+fi
+
+# ── Merge ─────────────────────────────────────────────────────────────────────
+IFS=';' read -r -a sequences <<<"$MERGE_SPEC"
+
+for sequence in "${sequences[@]}"; do
+	[ -z "$sequence" ] && continue
+
+	inputs="${sequence%%=*}"
+	output="${sequence##*=}"
+
+	if [ "$inputs" == "$sequence" ] || [ -z "$inputs" ] || [ -z "$output" ] || [[ "${sequence#*=}" == *=* ]]; then
+		echo "ERROR: malformed merge sequence: '$sequence' (expected A+B=C)" >&2
+		exit 1
+	fi
+
+	IFS='+' read -r -a inputFiles <<<"$inputs"
+
+	# Guard against destroying an input that is also the output (e.g. "A+B=A")
+	for inputFile in "${inputFiles[@]}"; do
+		if [ "$inputFile" == "$output" ]; then
+			echo "ERROR: output '$output' is also an input in sequence: '$sequence'" >&2
+			exit 1
+		fi
+	done
+
+	# Validate all inputs first, so a failure never leaves a truncated output
+	for inputFile in "${inputFiles[@]}"; do
+		if [ ! -f "$PRESETS_DIR/$inputFile" ]; then
+			echo "ERROR: missing input file: $PRESETS_DIR/$inputFile" >&2
+			exit 1
+		fi
+	done
+
+	# Start from an empty output, then concatenate inputs in order
+	: >"$PRESETS_DIR/$output" || exit 1
+	for inputFile in "${inputFiles[@]}"; do
+		cat "$PRESETS_DIR/$inputFile" >>"$PRESETS_DIR/$output" || exit 1
+	done
+
+	echo "Merged: $inputs -> $output"
+done

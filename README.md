@@ -75,6 +75,7 @@ openssl req -x509 -newkey rsa:4096 -keyout data/ssl_certs/key.pem -out data/ssl_
 Create a `.env` file with your paths:
 
 ```env
+GF_AUTO_MERGE_PRESETS= # optional: merge preset files on daemon start, e.g. "A+B=C;D+E=F" (see "Auto-merging presets")
 GF_HERMES_AUTOSTART=0 # set to 1 to auto-start Hermes container with the daemon
 GF_HERMES_TTYD_PORT=7682
 GF_HERMES_WEB_PORT=7683
@@ -181,6 +182,27 @@ Preset files are Docker Compose YAML snippets that override the base `compose.ym
 Preset names are derived from their filename (`.yml` extension stripped). You can reference them by full name or by MD5 hash.
 
 Example presets live in `inference_presets/examples/` (tracked). Your custom presets go in `inference_presets/local/` (gitignored).
+
+### Auto-merging presets
+
+`scripts/gf_auto_merge_presets` merges preset files by plain concatenation (no parsing, no dedup) inside `data/shared/inference_presets/local/`. It is driven entirely by `GF_AUTO_MERGE_PRESETS` in your `.env`:
+
+```env
+GF_AUTO_MERGE_PRESETS="A.ini+B.ini=C.ini;D.ini+E.ini=F.ini"
+```
+
+- Sequences are separated by `;` and executed strictly in order, so an earlier sequence's output can feed a later one (e.g. `A.ini+B.ini+C.ini=E.ini;D.ini+E.ini=F.ini`).
+- Within a sequence, inputs are separated by `+` and concatenated in the given order into the output file named after `=`.
+- Unset or empty → the script does nothing and exits 0.
+
+The daemon runs it automatically on start (once, before the services come up) when the variable is set. You can also run it manually at any time:
+
+```bash
+cd scripts
+./gf_auto_merge_presets
+```
+
+On any error (malformed sequence, missing input, output colliding with an input) the script aborts with a non-zero exit code; the daemon keeps running, so fix the `.env` and re-run.
 
 ---
 

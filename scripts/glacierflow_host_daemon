@@ -301,7 +301,9 @@ run_main_service() {
 	if [[ $isDaemon -eq 0 ]]; then
 		echo "[Will execute once and exit]"
 	fi
+	cd "$rootScriptDirectory"
 	run_preflight_checks
+	./gf_auto_merge_presets
 	run_web_ui
 	run_pi_dev
 	run_caddy
