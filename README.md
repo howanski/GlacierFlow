@@ -31,6 +31,7 @@ GlacierFlow runs llama.cpp inside Docker and lets you switch between model prese
 - Web-based UI for preset management and status monitoring
 - Embedding server (llama.cpp) for vector embeddings, toggleable via override config
 - FIFO proxy for serializing chat requests (prevents stream cut-offs during model hot-swap)
+- Automatic LLM ↔ Stable Diffusion mode switching in the FIFO proxy (chat and image generation through one endpoint, e.g. Cherry Studio)
 - Caddy reverse proxy with SSL/TLS termination and basic auth for Web UI, pi.dev TTYD, Hermes TTYD and VS Code
 - User/group ID customization via `GF_USER_ID` / `GF_USER_GROUP_ID` environment variables (affects all containers)
 
@@ -83,6 +84,8 @@ GF_HERMES_WORKDIR=/path/to/hermes/workdir
 GF_USER_GROUP_ID=1000 # group ID for all containers (defaults to 1000)
 GF_USER_ID=1000 # user ID for all containers (defaults to 1000)
 GF_AUDIO_CPP_ENABLE=0 # set to 1 to auto-clone/build audio.cpp binaries on daemon start (CPU-heavy)
+GF_DEFAULT_MODEL_LLM= # preset name for chat mode, loaded by the daemon on start (see "Automatic Mode Switching")
+GF_DEFAULT_MODEL_SD= # preset name for image generation mode (see "Automatic Mode Switching")
 GF_STABLE_DIFFUSION_ENABLE=0 # set to 1 to auto-download/update stable-diffusion.cpp binaries on daemon start
 GF_VSCODE_AUTOSTART=0 # set to 1 to auto-start VS Code container with the daemon
 GF_VSCODE_WEB_PORT=7684
@@ -94,6 +97,7 @@ GF_LOG_STATS=0 # set to 1 to enable performance stats logging
 GF_MODELS_DIRECTORY=/path/to/your/models
 GF_PI_DEV_TTYD_PORT=7681
 GF_PI_DEV_WORKDIR=/path/to/coder/workdir
+GF_PROXY_AUTO_MODE=0 # set to 1 to enable automatic LLM ↔ SD mode switching in the FIFO proxy
 GF_PROXY_DUMP_REQUESTS=0 # set to 1 to dump request/response pairs to JSON files
 GF_WEB_UI_PORT=8090
 ```
@@ -405,6 +409,7 @@ The daemon tracks the server state in `data/shared/inference_status.txt`:
 | `LOADING` | Server container started, model still loading |
 | `STOPPED` | Server is down |
 | `LAUNCHING` | Docker compose is pulling/starting |
+| `AUTO_SWITCHING` | FIFO proxy is switching the backend between LLM and SD presets (automatic mode switching) |
 | `LOCKED` | Server is locked (inference lock file present) |
 | `NOT CONFIGURED` | No active config found |
 | `DEGRADED` | Unexpected response |
@@ -450,6 +455,49 @@ When enabled, each request/response pair is dumped to `docker/fifo_proxy/dumps/`
 ```
 
 The dump is written when the response completes or when the client disconnects. Dumped files are gitignored.
+
+### Automatic Mode Switching (LLM ↔ Stable Diffusion)
+
+The proxy can automatically switch the backend between a llama.cpp (chat) preset and a stable-diffusion.cpp (image) preset. This lets a single client — e.g. [Cherry Studio](https://www.cherry-ai.com) — use both chat and image generation through the same endpoint (port 8070), without manually switching presets via the daemon, CLI or Web UI.
+
+Requests are classified by route:
+
+- `/v1/chat/*` → LLM mode (llama.cpp preset)
+- `/v1/images/*` → SD mode (stable-diffusion.cpp preset)
+
+When a request arrives in a mode different from the one currently loaded, the proxy:
+
+1. Waits until the backend is idle (`RUNNING` status)
+2. Remembers the preset currently loaded for the mode it is switching away from, so it can be restored on the next switch back
+3. Writes the target preset name to `data/shared/inference_preset_name_target.txt` and copies `data/shared/inference_presets/local/<preset>.yml` to `data/shared/inference_config.yml`
+4. Sets the status to `AUTO_SWITCHING` and waits for the daemon to restart the server and the status to return to `RUNNING`
+
+The request that triggered the switch is held in the FIFO queue until the new model is ready. The proxy always starts in LLM mode.
+
+#### Setup
+
+1. **Enable in `.env`**:
+
+```env
+GF_PROXY_AUTO_MODE=1
+GF_DEFAULT_MODEL_LLM=vulkan_8gb_gemma4_e4b_q4
+GF_DEFAULT_MODEL_SD=vulkan_8gb_stable_diffusion_z_image_turbo
+```
+
+- `GF_PROXY_AUTO_MODE` — set to `1` to enable automatic mode switching (default `0`)
+- `GF_DEFAULT_MODEL_LLM` — name of the llama.cpp preset (filename without `.yml`) to load for chat mode. The daemon also loads this preset on startup, so the backend starts in LLM mode
+- `GF_DEFAULT_MODEL_SD` — name of the stable-diffusion.cpp preset to load for image generation mode
+
+2. **Place both presets in `data/shared/inference_presets/local/`** — the proxy copies the preset file from the local presets directory, so example presets alone are not enough. You need to setup i.e. width and height for z-image.
+
+3. **Keep the daemon running** — the daemon is what applies the config change and restarts the inference container. The proxy only coordinates via the shared status/preset files in `data/shared/` (mounted into the proxy container at `/glacierflow-shared`).
+
+#### Caveats
+
+- The first request after a mode switch waits for the new model to load (status `AUTO_SWITCHING`), so expect a delay on that request
+- If `GF_DEFAULT_MODEL_LLM` / `GF_DEFAULT_MODEL_SD` is empty, or the preset file is missing, the switch is skipped and the request is proxied to the backend in its current mode
+- Manual preset switching (CLI / Web UI) still works as usual — the proxy picks up the manually selected preset name the next time it switches back to that mode.
+- Manual switching between sd and llm modes might get daemon confused but switching between i.e. gemma and qwen wis fine.
 
 ---
 

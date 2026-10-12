@@ -313,6 +313,7 @@ run_main_service() {
 	run_vscode
 	prep_stable_diffusion_binaries
 	prep_audio_cpp_binaries
+	./glacierflow_inference_select_preset $GF_DEFAULT_MODEL_LLM skip skip
 	while true; do
 		run_inference_server
 

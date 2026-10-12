@@ -15,6 +15,22 @@ import (
 	"time"
 )
 
+const (
+	modeLLM = "llm"
+	modeSD  = "sd"
+
+	statusFile       = "/glacierflow-shared/inference_status.txt"
+	presetNameFile   = "/glacierflow-shared/inference_preset_name.txt"
+	presetTargetFile = "/glacierflow-shared/inference_preset_name_target.txt"
+	inferenceConfig  = "/glacierflow-shared/inference_config.yml"
+	presetsLocalDir  = "/glacierflow-shared/inference_presets/local/"
+)
+
+var (
+	targetModelLlm = os.Getenv("GF_DEFAULT_MODEL_LLM")
+	targetModelSd  = os.Getenv("GF_DEFAULT_MODEL_SD")
+)
+
 // fifoQueue serializes HTTP requests to a backend, processing them strictly
 // in the order they arrive. A single worker goroutine consumes an ordered
 // channel, so arrival order is preserved. Requests whose client disconnected
@@ -23,6 +39,7 @@ type fifoQueue struct {
 	jobs    chan fifoJob
 	backend *url.URL
 	client  *http.Client
+	mode    string // current operating mode (modeLLM or modeSD)
 }
 
 type fifoJob struct {
@@ -30,6 +47,7 @@ type fifoJob struct {
 	r    *http.Request
 	w    http.ResponseWriter
 	done chan struct{}
+	mode string
 }
 
 func newFifoQueue(backendURL string) *fifoQueue {
@@ -43,6 +61,7 @@ func newFifoQueue(backendURL string) *fifoQueue {
 		client: &http.Client{
 			Timeout: 0, // no timeout – streaming can last a long time
 		},
+		mode: modeLLM, // backend is assumed to start in LLM mode
 	}
 	go q.worker()
 	return q
@@ -54,6 +73,7 @@ func (q *fifoQueue) worker() {
 		if job.ctx.Err() != nil {
 			log.Printf("skipping queued %s %s: client disconnected while waiting", job.r.Method, job.r.URL.Path)
 		} else {
+			q.maybeSwitchMode(job.mode)
 			q.dispatch(job.r, job.w)
 		}
 		close(job.done)
@@ -64,13 +84,105 @@ func (q *fifoQueue) worker() {
 // been processed (or skipped because the client went away). A client that
 // disconnects while waiting no longer holds its slot: the request is
 // dropped as soon as it reaches the head of the queue.
-func (q *fifoQueue) enqueue(ctx context.Context, r *http.Request, w http.ResponseWriter) {
+func (q *fifoQueue) enqueue(ctx context.Context, mode string, r *http.Request, w http.ResponseWriter) {
 	if ctx.Err() != nil {
 		return
 	}
-	job := fifoJob{ctx: ctx, r: r, w: w, done: make(chan struct{})}
+	job := fifoJob{ctx: ctx, r: r, w: w, done: make(chan struct{}), mode: mode}
 	q.jobs <- job
 	<-job.done
+}
+
+// maybeSwitchMode switches the queue's operating mode to reqMode when it
+// differs from the current mode and auto mode switching is enabled. It runs
+// inside the worker, right before the request is proxied to the backend.
+func (q *fifoQueue) maybeSwitchMode(reqMode string) {
+	if q.mode == reqMode {
+		return
+	}
+	if os.Getenv("GF_PROXY_AUTO_MODE") != "1" {
+		return
+	}
+	log.Printf("mode switch requested: %s -> %s", q.mode, reqMode)
+	q.switchMode(q.mode, reqMode)
+}
+
+// switchMode performs the physical mode transition from `from` to `to` by
+// coordinating with the backend via the shared status/preset files.
+func (q *fifoQueue) switchMode(from, to string) {
+	// 1. Wait until the backend is idle (RUNNING).
+	waitForStatus("RUNNING")
+
+	// 2. Remember the model currently loaded so we can restore it later.
+	current := readPresetName()
+	if from == modeLLM {
+		targetModelLlm = current
+	} else {
+		targetModelSd = current
+	}
+
+	// 3. Determine the model to load for the target mode.
+	var target string
+	if to == modeSD {
+		target = targetModelSd
+	} else {
+		target = targetModelLlm
+	}
+	if target == "" {
+		log.Printf("target model for %s mode is empty, skipping switch", to)
+		return
+	}
+
+	// 4. Ask the backend to load the target model and wait for it to be ready.
+	writeFile(presetTargetFile, target)
+	presetSrc := presetsLocalDir + target + ".yml"
+	if err := copyFile(presetSrc, inferenceConfig); err != nil {
+		log.Printf("copy preset %s -> %s error: %v, skipping switch", presetSrc, inferenceConfig, err)
+		return
+	}
+	writeFile(statusFile, "AUTO_SWITCHING")
+	waitForStatus("RUNNING")
+
+	q.mode = to
+	log.Printf("mode switched to %s (model: %s)", to, target)
+}
+
+// waitForStatus polls the shared status file until its body equals want.
+// There is no time cap.
+func waitForStatus(want string) {
+	for {
+		b, err := os.ReadFile(statusFile)
+		if err == nil && strings.TrimSpace(string(b)) == want {
+			return
+		}
+		time.Sleep(300 * time.Millisecond)
+	}
+}
+
+// readPresetName returns the current model name from the shared preset file.
+func readPresetName() string {
+	b, err := os.ReadFile(presetNameFile)
+	if err != nil {
+		log.Printf("read preset name error: %v", err)
+		return ""
+	}
+	return strings.TrimSpace(string(b))
+}
+
+// writeFile writes content to path, logging (not failing) on error.
+func writeFile(path, content string) {
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		log.Printf("write %s error: %v", path, err)
+	}
+}
+
+// copyFile copies the contents of src to dst.
+func copyFile(src, dst string) error {
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(dst, data, 0644)
 }
 
 // dispatch forwards the request to the backend, copies the response back,
@@ -262,8 +374,13 @@ func main() {
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/v1/chat/") {
-			log.Printf("[F.I.F.O.] %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
-			fifo.enqueue(r.Context(), r, w)
+			log.Printf("[F.I.F.O. LLM] %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
+			fifo.enqueue(r.Context(), modeLLM, r, w)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, "/v1/images/") {
+			log.Printf("[F.I.F.O. SD] %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
+			fifo.enqueue(r.Context(), modeSD, r, w)
 			return
 		}
 		log.Printf("[PARALLEL] %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)

@@ -9,8 +9,12 @@ services:
       - "${GF_INFERENCE_PORT_HTTP:-8070}:8080"
     environment:
       - DUMP_REQUESTS=${GF_PROXY_DUMP_REQUESTS:-0}
+      - GF_PROXY_AUTO_MODE=${GF_PROXY_AUTO_MODE:-0}
+      - GF_DEFAULT_MODEL_LLM=${GF_DEFAULT_MODEL_LLM:-}
+      - GF_DEFAULT_MODEL_SD=${GF_DEFAULT_MODEL_SD:-}
     volumes:
       - ./:/app
+      - ./../../data/shared:/glacierflow-shared:rw
     restart: no
     logging:
       driver: json-file
