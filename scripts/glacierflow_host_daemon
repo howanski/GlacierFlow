@@ -261,7 +261,7 @@ run_inference_server() {
 			source "../../.env"
 			set +a
 		fi
-		docker compose pull
+		export BUILDX_BAKE_ENTITLEMENTS_FS=0
 		docker compose -p "$GF_STACK_NAME" up -d
 		cd "$rootScriptDirectory"
 		date +%s >"$GF_INFERENCE_SERVICE_UP_TIMESTAMP"

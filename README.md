@@ -609,7 +609,7 @@ cd scripts
 
 ### Container Details
 
-- **Image**: Alpine-based with bash, curl, ttyd, tmux, git, npm, and vim as basic requirements. Additional packages can be passed via `GF_PI_EXTRA_PACKAGES` .env arg (space-separated list).
+- **Image**: Ubuntu-based with bash, curl, ttyd, tmux, git, nodejs (incl. npm), and vim as basic requirements. Additional packages can be passed via `GF_PI_EXTRA_PACKAGES` .env arg (space-separated list of apt package names).
 - **User**: Runs as non-root (`pi_dev`, UID configurable via `GF_USER_ID`, defaults to 1000)
 - **TTYD**: Web terminal server on port 7681 with basic auth (configurable via `GF_PI_DEV_TTYD_USER` / `GF_PI_DEV_TTYD_PASSWORD`)
 - **Auto-update**: On startup, the container checks for and applies pi.dev updates automatically. Extensions are not pre-installed but can be added manually — they survive image rebuilds.
